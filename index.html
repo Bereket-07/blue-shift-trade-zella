@@ -265,6 +265,7 @@
       <div class="topbar">
         <div><h1 id="greet">Welcome 👋</h1><div class="sub" id="range-sub">Import your MT5 statement to get started</div></div>
         <div class="top-right">
+          <div class="chip" id="chip-bal" style="display:none">Balance: <b>—</b></div>
           <div class="chip" id="chip-net">Net P&L: <b>—</b></div>
           <div class="avatar" id="avatar">?</div>
         </div>
@@ -318,8 +319,8 @@
       </div>
       <div class="msg" id="msg"></div>
       <div class="steps">
-        <div class="panel"><b>📱 From your phone (PDF)</b>Exness Personal Area → your account → ⋮ → Manage statements → Download account statement. Upload the PDF here.</div>
-        <div class="panel"><b>💻 From MT5 desktop</b>Toolbox → History tab → right-click → Report → HTML. Then upload the saved file here.</div>
+        <div class="panel"><b>📄 Get your Exness statement (PDF)</b>Log in to Exness → <b style="display:inline">Trading → Accounts</b> → find your MT5 account → tap the <b style="display:inline">⋮</b> menu → <b style="display:inline">Manage statements</b> → <b style="display:inline">Download account statement</b> → choose your date range → <b style="display:inline">Download</b>. Then upload that PDF here. Works on phone and PC.</div>
+        <div class="panel"><b>💻 Or from MT5 desktop</b>Toolbox → History tab → right-click → Report → HTML. Then upload the saved file here.</div>
         <div class="panel"><b>☁️ Synced everywhere</b>Your trades, notes and screenshots are stored securely in your account — log in from any device and everything is there.</div>
       </div>
       <div style="margin-top:14px;text-align:center"><button class="btn ghost" onclick="loadSample()">Try with sample data</button></div>
@@ -337,7 +338,7 @@ const SUPABASE_URL = 'https://gwiwyvaznhmjggsrtstl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_QER1M-e9IeezCYrkK7mMLg_-qkrYmDS';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let user = null, trades = [], authMode = 'signin';
+let user = null, trades = [], txs = [], authMode = 'signin';
 let calMonth = null, calPageMonth = null, selDay = null, detailId = null;
 const urlCache = {};
 const EMOTIONS = [['😌','Calm'],['🙂','Confident'],['😐','Neutral'],['😤','Frustrated'],['😰','Anxious'],['😡','Tilted']];
@@ -431,7 +432,24 @@ async function loadTrades(){
   const {data,error}=await sb.from('trades').select('*').order('close_time',{ascending:true});
   if(error){ alert('Could not load trades: '+error.message); return; }
   trades=(data||[]).map(fromDb);
+  const r2=await sb.from('transactions').select('*').order('time',{ascending:true});
+  txs = r2.error ? [] : (r2.data||[]).map(r=>({time:r.time,label:r.label||'',amount:+r.amount}));
   show('dashboard');
+}
+
+function txKey(t){ return [t.time,t.label,t.amount].join('|'); }
+async function importTxs(list){
+  if(!list.length) return 0;
+  const seen=new Set(); const rows=[];
+  for(const t of list){
+    const k=txKey(t);
+    if(!seen.has(k)){ seen.add(k); rows.push({user_id:user.id, tx_key:k, time:t.time, label:t.label, amount:t.amount}); }
+  }
+  const {data,error}=await sb.from('transactions')
+    .upsert(rows,{onConflict:'user_id,tx_key',ignoreDuplicates:true})
+    .select('id');
+  if(error) return 0; // table may not exist yet — trades still import fine
+  return data?data.length:0;
 }
 
 async function importTrades(list){
@@ -549,12 +567,22 @@ function parseStatementLines(lines){
   let end=lines.findIndex((l,i)=>i>start&&/open trades/i.test(l));
   if(start<0){ start=-1; end=lines.length; }
   if(end<0) end=lines.length;
-  const out=[];
+  const out=[], txs=[];
   for(let i=start+1;i<end;i++){
     const tk=lines[i].trim().split(/\s+/);
-    if(tk.length<14) continue;
+    if(tk.length<4) continue;
     if(!/^\d{5,}$/.test(tk[0])) continue;               // Position ID
-    if(!/^(buy|sell)$/i.test(tk[1])) continue;          // skip balance/credit rows
+    // Deposit / withdrawal rows: "<id> balance <date> <time> <label> <amount>"
+    if(/^balance$/i.test(tk[1])){
+      const bt=parseDate(tk[2]+' '+tk[3]);
+      const amount=parseNum(tk[tk.length-1]);
+      if(bt&&!isNaN(amount)&&amount!==0){
+        txs.push({time:bt.toISOString(), label:tk.slice(4,tk.length-1).join(' '), amount});
+      }
+      continue;
+    }
+    if(tk.length<14) continue;
+    if(!/^(buy|sell)$/i.test(tk[1])) continue;          // skip credit/other rows
     const ot=parseDate(tk[2]+' '+tk[3]);
     const ct=parseDate(tk[7]+' '+tk[8]);
     if(!ot||!ct) continue;
@@ -577,10 +605,10 @@ function parseStatementLines(lines){
       setup:'', emotion:'', notesPre:'', notesPost:'', shots:[]
     });
   }
-  return out;
+  return {trades:out, txs};
 }
 async function parsePDF(file){
-  if(!window.pdfjsLib) { alert('PDF reader could not load — check your internet connection.'); return []; }
+  if(!window.pdfjsLib) { alert('PDF reader could not load — check your internet connection.'); return {trades:[],txs:[]}; }
   pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const buf=await file.arrayBuffer();
   const pdf=await pdfjsLib.getDocument({data:buf}).promise;
@@ -609,27 +637,32 @@ fileInput.addEventListener('change',()=>{handleFiles(fileInput.files);});
 async function handleFiles(files){
   if(!files.length) return;
   msg.className='msg ok'; msg.textContent='Importing…';
-  let all=[], hadPdf=false;
+  let all=[], allTxs=[], hadPdf=false;
   for(const f of [...files]){
-    let parsed;
-    if(/\.pdf$/i.test(f.name)){ hadPdf=true; parsed=await parsePDF(f); }
-    else{
+    if(/\.pdf$/i.test(f.name)){
+      hadPdf=true;
+      const r=await parsePDF(f);
+      all.push(...r.trades); allTxs.push(...r.txs);
+    }else{
       const text=await f.text();
-      parsed=/\.csv$/i.test(f.name)?parseCSV(text):parseHTMLReport(text);
+      all.push(...(/\.csv$/i.test(f.name)?parseCSV(text):parseHTMLReport(text)));
     }
-    all.push(...parsed);
   }
   fileInput.value='';
-  if(!all.length){
+  if(!all.length&&!allTxs.length){
     msg.className='msg err';
     msg.textContent=hadPdf
-      ? 'No closed trades found in that statement. If your trades were in this period, tell me — the PDF layout may differ slightly.'
+      ? 'No trades or transactions found in that statement. If your trades were in this period, tell me — the PDF layout may differ slightly.'
       : 'No trades found in that file. Make sure it\'s an Exness PDF statement, MT5 HTML report, or CSV with symbol/type/profit columns.';
     return;
   }
-  const added=await importTrades(all);
+  const addedTx=await importTxs(allTxs);
+  const added=all.length?await importTrades(all):(await loadTrades(),0);
   msg.className='msg ok';
-  msg.textContent=`✓ Imported ${added} new trade${added!==1?'s':''} (${all.length} found, ${all.length-added} duplicates skipped). Total: ${trades.length}`;
+  const parts=[];
+  if(all.length) parts.push(`${added} new trade${added!==1?'s':''} (${all.length} found, ${all.length-added} duplicates skipped)`);
+  if(allTxs.length) parts.push(`${addedTx} deposit/withdrawal record${addedTx!==1?'s':''}`);
+  msg.textContent='✓ Imported '+parts.join(' and ')+`. Total trades: ${trades.length}`;
   setTimeout(()=>show('dashboard'),900);
 }
 
@@ -639,7 +672,8 @@ async function clearAll(){
   if(paths.length){ try{ await sb.storage.from('screenshots').remove(paths); }catch(e){} }
   const {error}=await sb.from('trades').delete().eq('user_id',user.id);
   if(error){ alert(error.message); return; }
-  trades=[]; renderJournal(); renderDash();
+  try{ await sb.from('transactions').delete().eq('user_id',user.id); }catch(e){}
+  trades=[]; txs=[]; renderJournal(); renderDash();
 }
 
 /* ================= STATS ================= */
@@ -716,13 +750,21 @@ function renderDash(){
   document.getElementById('greet').textContent=(h<12?'Good morning':h<18?'Good afternoon':'Good evening')+', '+(window._name||'trader')+' 👋';
   const el=document.getElementById('dash-body');
   const syncInfo=document.getElementById('sync-info');
+  // Account balance = deposits/withdrawals + all closed P&L
+  const txSum=txs.reduce((a,t)=>a+t.amount,0);
+  const balChip=document.getElementById('chip-bal');
+  if(txs.length){
+    const bal=txSum+trades.reduce((a,t)=>a+t.profit,0);
+    balChip.style.display='';
+    balChip.innerHTML=`Balance: <b class="${cls(bal)}">${money(bal)}</b>`;
+  } else balChip.style.display='none';
   if(!trades.length){
-    el.innerHTML=`<div class="panel"><div class="empty">No trades yet.<br><br>
-      <button class="btn" onclick="show('import')">⬆ Import your MT5 statement</button>
+    el.innerHTML=`<div class="panel"><div class="empty">${txs.length?`Deposits recorded: <b class="pos">${money(txSum)}</b> — no closed trades yet.`:'No trades yet.'}<br><br>
+      <button class="btn" onclick="show('import')">⬆ Import your statement</button>
       &nbsp; <button class="btn ghost" onclick="loadSample()">Try with sample data</button></div></div>`;
-    document.getElementById('range-sub').textContent='Import your MT5 statement to get started';
+    document.getElementById('range-sub').textContent='Import your Exness statement to get started';
     document.getElementById('chip-net').innerHTML='Net P&L: <b>—</b>';
-    syncInfo.innerHTML='No trades yet.<br>Upload a statement in Import.';
+    syncInfo.innerHTML=txs.length?`Balance ${money(txSum)} · no trades yet`:'No trades yet.<br>Upload a statement in Import.';
     return;
   }
   const s=computeStats(trades), z=zellaScore(s);

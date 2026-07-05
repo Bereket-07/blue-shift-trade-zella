@@ -77,4 +77,34 @@ create policy "delete own screenshots" on storage.objects
     and auth.uid()::text = (storage.foldername(name))[1]
   );
 
+-- 4. Transactions table (deposits / withdrawals from statements)
+create table if not exists public.transactions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  tx_key text not null,
+  time timestamptz not null,
+  label text default '',
+  amount numeric not null,
+  created_at timestamptz default now(),
+  unique (user_id, tx_key)
+);
+
+alter table public.transactions enable row level security;
+
+drop policy if exists "select own tx" on public.transactions;
+create policy "select own tx" on public.transactions
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "insert own tx" on public.transactions;
+create policy "insert own tx" on public.transactions
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "update own tx" on public.transactions;
+create policy "update own tx" on public.transactions
+  for update using (auth.uid() = user_id);
+
+drop policy if exists "delete own tx" on public.transactions;
+create policy "delete own tx" on public.transactions
+  for delete using (auth.uid() = user_id);
+
 -- Done. You should see "Success. No rows returned."

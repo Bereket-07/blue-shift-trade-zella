@@ -12,6 +12,14 @@
     --text:#e8ecf4; --muted:#8b95a8; --green:#22c47a; --red:#f0506e;
     --accent:#6c5ce7; --accent2:#8b7cf0; --gold:#f5b955;
   }
+  body.light{
+    --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef1f8; --border:#e3e7f0;
+    --text:#232946; --muted:#7a839b; --accent2:#6c5ce7; --gold:#d99a1f;
+  }
+  body.light .card,body.light .panel,body.light .auth-card{box-shadow:0 1px 3px rgba(35,41,70,.07)}
+  body.light .btn-google{border:1px solid #dfe3ec}
+  body.light .sidebar{box-shadow:1px 0 4px rgba(35,41,70,.04)}
+  body{transition:background .2s}
   *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
   body{background:var(--bg);color:var(--text);min-height:100vh}
   button{font-family:inherit;cursor:pointer}
@@ -188,7 +196,7 @@
     .rtable thead,.rtable th,.rtable .hide-m{display:none}
     .rtable tr{background:var(--panel2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;padding:6px 13px}
     .rtable tr:hover td{background:transparent}
-    .rtable td{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(36,44,61,.6);white-space:normal}
+    .rtable td{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);white-space:normal}
     .rtable tr td:last-child{border-bottom:none}
     .rtable td::before{content:attr(data-label);color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-right:12px}
     .thumbs{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}
@@ -236,6 +244,12 @@
     <div class="nav-item" data-v="import" onclick="show('import')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 16V4m0 0l-4 4m4-4l4 4"/><path d="M4 20h16"/></svg>
       Import</div>
+    <div class="nav-item" onclick="toggleTheme()">
+      <span id="theme-icon" style="font-size:15px;width:18px;text-align:center;flex-shrink:0">☀️</span>
+      <span id="theme-label">Light mode</span></div>
+    <div class="nav-item" onclick="signOut()">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      Logout</div>
     <div class="sync-box">
       <b><span class="dot"></span><span id="user-email"></span></b>
       <div class="muted" id="sync-info">Loading…</div>
@@ -326,6 +340,23 @@ let user = null, trades = [], authMode = 'signin';
 let calMonth = null, calPageMonth = null, selDay = null, detailId = null;
 const urlCache = {};
 const EMOTIONS = [['😌','Calm'],['🙂','Confident'],['😐','Neutral'],['😤','Frustrated'],['😰','Anxious'],['😡','Tilted']];
+
+/* ================= THEME ================= */
+function cssVar(n){ return getComputedStyle(document.body).getPropertyValue(n).trim(); }
+function applyTheme(th){
+  document.body.classList.toggle('light', th==='light');
+  const lbl=document.getElementById('theme-label'), ic=document.getElementById('theme-icon');
+  if(lbl) lbl.textContent = th==='light' ? 'Dark mode' : 'Light mode';
+  if(ic) ic.textContent = th==='light' ? '🌙' : '☀️';
+}
+function toggleTheme(){
+  const th=document.body.classList.contains('light')?'dark':'light';
+  try{ localStorage.setItem('zb_theme', th); }catch(e){}
+  applyTheme(th);
+  const act=document.querySelector('.views.active');
+  if(act && (act.id==='view-dashboard'||act.id==='view-calendar')) show(act.id.replace('view-',''));
+}
+try{ applyTheme(localStorage.getItem('zb_theme')||'dark'); }catch(e){ applyTheme('dark'); }
 
 function money(n,d=2){ const a=Math.abs(n)>=1000?Math.round(Math.abs(n)).toLocaleString():Math.abs(n).toFixed(d); return '$'+a; }
 function signed(n,d=2){ return (n>=0?'+':'−')+money(Math.abs(n),d); }
@@ -591,14 +622,15 @@ function equityCurve(series){
   const line=series.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
   const area=line+` L${x(series.length-1).toFixed(1)},${y(0)} L${x(0).toFixed(1)},${y(0)} Z`;
   const col=series[series.length-1].v>=0?'#22c47a':'#f0506e';
+  const gridCol=cssVar('--border')||'#242c3d', lblCol=cssVar('--muted')||'#8b95a8';
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="225">
     <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${col}" stop-opacity=".35"/><stop offset="100%" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
-    <line x1="${P}" y1="${y(0)}" x2="${W-8}" y2="${y(0)}" stroke="#242c3d"/>
+    <line x1="${P}" y1="${y(0)}" x2="${W-8}" y2="${y(0)}" stroke="${gridCol}"/>
     <path d="${area}" fill="url(#g1)"/>
     <path d="${line}" fill="none" stroke="${col}" stroke-width="2.5"/>
-    <text x="2" y="${y(max)+4}" font-size="10" fill="#8b95a8">${money(max,0)}</text>
-    <text x="2" y="${y(0)+4}" font-size="10" fill="#8b95a8">$0</text>
-    ${min<0?`<text x="2" y="${y(min)+4}" font-size="10" fill="#8b95a8">−${money(Math.abs(min),0)}</text>`:''}</svg>`;
+    <text x="2" y="${y(max)+4}" font-size="10" fill="${lblCol}">${money(max,0)}</text>
+    <text x="2" y="${y(0)+4}" font-size="10" fill="${lblCol}">$0</text>
+    ${min<0?`<text x="2" y="${y(min)+4}" font-size="10" fill="${lblCol}">−${money(Math.abs(min),0)}</text>`:''}</svg>`;
 }
 function barRows(entries){
   if(!entries.length) return '<div class="empty" style="padding:14px">No data yet</div>';

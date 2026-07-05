@@ -374,19 +374,25 @@
   <div class="modal-card">
     <h2>Add a trade <button class="x" onclick="document.getElementById('modal-trade').classList.remove('on')">✕</button></h2>
     <div class="form-grid">
-      <div><div class="flabel" style="margin-top:0">Symbol *</div><input type="text" id="mt-symbol" placeholder="XAUUSD"></div>
+      <div><div class="flabel" style="margin-top:0">Symbol *</div><input type="text" id="mt-symbol" list="symbol-dl" placeholder="Choose or type…"><datalist id="symbol-dl"></datalist></div>
       <div><div class="flabel" style="margin-top:0">Side</div>
         <select id="mt-side"><option value="BUY">BUY</option><option value="SELL">SELL</option></select></div>
+      <div><div class="flabel" style="margin-top:0">Result *</div>
+        <select id="mt-plsign"><option value="1">🟢 Profit</option><option value="-1">🔴 Loss</option></select></div>
+      <div><div class="flabel" style="margin-top:0">Amount ($) *</div><input type="number" step="0.01" min="0" id="mt-profit" placeholder="e.g. 125.40"></div>
       <div><div class="flabel" style="margin-top:0">Open time *</div><input type="datetime-local" id="mt-open"></div>
       <div><div class="flabel" style="margin-top:0">Close time</div><input type="datetime-local" id="mt-close"></div>
       <div><div class="flabel" style="margin-top:0">Lots</div><input type="number" step="0.01" id="mt-lots" placeholder="0.10"></div>
-      <div><div class="flabel" style="margin-top:0">Net P&L ($) *</div><input type="number" step="0.01" id="mt-profit" placeholder="e.g. 125.40 or -60"></div>
+      <div><div class="flabel" style="margin-top:0">Emotion</div><select id="mt-emotion"><option value="">—</option></select></div>
       <div><div class="flabel" style="margin-top:0">Entry price</div><input type="number" step="any" id="mt-entry"></div>
       <div><div class="flabel" style="margin-top:0">Exit price</div><input type="number" step="any" id="mt-exit"></div>
       <div><div class="flabel" style="margin-top:0">Stop loss</div><input type="number" step="any" id="mt-sl"></div>
       <div><div class="flabel" style="margin-top:0">Take profit</div><input type="number" step="any" id="mt-tp"></div>
-      <div><div class="flabel" style="margin-top:0">Setup</div><input type="text" id="mt-setup" list="setup-dl2" placeholder="London Breakout"><datalist id="setup-dl2"></datalist></div>
-      <div><div class="flabel" style="margin-top:0">Emotion</div><select id="mt-emotion"><option value="">—</option></select></div>
+      <div class="full"><div class="flabel" style="margin-top:0">Setup — from your playbook</div>
+        <select id="mt-setup-sel" onchange="document.getElementById('mt-setup-new').style.display=this.value==='__new'?'block':'none'">
+          <option value="">— no setup —</option>
+        </select>
+        <input type="text" id="mt-setup-new" placeholder="Name your new setup…" style="display:none;margin-top:8px"></div>
       <div class="full"><div class="flabel" style="margin-top:0">Pre-trade notes</div><textarea id="mt-pre" style="min-height:60px" placeholder="Why did you enter?"></textarea></div>
       <div class="full"><div class="flabel" style="margin-top:0">Post-trade review</div><textarea id="mt-post" style="min-height:60px" placeholder="What did you learn?"></textarea></div>
     </div>
@@ -1137,12 +1143,25 @@ async function removeShot(i){
 }
 
 /* ================= MANUAL TRADE ================= */
+const COMMON_SYMBOLS=['XAUUSD','EURUSD','GBPUSD','USDJPY','GBPJPY','AUDUSD','USDCAD','USDCHF','NZDUSD','EURJPY','BTCUSD','ETHUSD','US30','NAS100','SPX500','USOIL'];
 function openTradeModal(){
-  const dl=document.getElementById('setup-dl2');
-  dl.innerHTML=setupList().map(s=>`<option value="${esc(s)}">`).join('');
+  // Symbols: ones you've traded first, then common ones
+  const used=[...new Set(trades.map(t=>t.symbol))];
+  const syms=[...used, ...COMMON_SYMBOLS.filter(s=>!used.includes(s))];
+  document.getElementById('symbol-dl').innerHTML=syms.map(s=>`<option value="${esc(s)}">`).join('');
+  // Setups: playbook names first, then other tags you've used, then "new"
+  const pbNames=playbooks.map(p=>p.name);
+  const otherTags=setupList().filter(s=>!pbNames.includes(s));
+  const sel=document.getElementById('mt-setup-sel');
+  sel.innerHTML='<option value="">— no setup —</option>'
+    +(pbNames.length?`<optgroup label="From your playbook">${pbNames.map(s=>`<option value="${esc(s)}">⚡ ${esc(s)}</option>`).join('')}</optgroup>`:'')
+    +(otherTags.length?`<optgroup label="Other tags you've used">${otherTags.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('')}</optgroup>`:'')
+    +'<option value="__new">➕ New setup…</option>';
+  document.getElementById('mt-setup-new').style.display='none';
   const emoSel=document.getElementById('mt-emotion');
   emoSel.innerHTML='<option value="">—</option>'+EMOTIONS.map(([e,n])=>`<option value="${e}">${e} ${n}</option>`).join('');
-  ['mt-symbol','mt-lots','mt-profit','mt-entry','mt-exit','mt-sl','mt-tp','mt-setup','mt-pre','mt-post'].forEach(id=>document.getElementById(id).value='');
+  ['mt-symbol','mt-lots','mt-profit','mt-entry','mt-exit','mt-sl','mt-tp','mt-setup-new','mt-pre','mt-post'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('mt-plsign').value='1';
   const now=new Date(); now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
   document.getElementById('mt-open').value=now.toISOString().slice(0,16);
   document.getElementById('mt-close').value=now.toISOString().slice(0,16);
@@ -1151,15 +1170,19 @@ function openTradeModal(){
 async function saveManualTrade(){
   const g=id=>document.getElementById(id);
   const symbol=g('mt-symbol').value.trim().toUpperCase();
-  const profit=parseNum(g('mt-profit').value);
+  const sign=+g('mt-plsign').value;
+  const amount=parseNum(g('mt-profit').value);
+  const profit=isNaN(amount)?NaN:sign*Math.abs(amount);
   const otv=g('mt-open').value, ctv=g('mt-close').value;
-  if(!symbol||isNaN(profit)||!otv){ alert('Symbol, open time and net P&L are required.'); return; }
+  if(!symbol||isNaN(profit)||!otv){ alert('Symbol, result amount and open time are required.'); return; }
   const ot=new Date(otv), ct=ctv?new Date(ctv):ot;
   const num=v=>{ const n=parseNum(v); return isNaN(n)?null:n; };
+  const setupSel=g('mt-setup-sel').value;
+  const setup=setupSel==='__new'?g('mt-setup-new').value.trim():setupSel;
   const t={openTime:ot.toISOString(), closeTime:(ct>=ot?ct:ot).toISOString(), symbol,
     side:g('mt-side').value, lots:num(g('mt-lots').value), entry:num(g('mt-entry').value),
     exit:num(g('mt-exit').value), sl:num(g('mt-sl').value), tp:num(g('mt-tp').value),
-    commission:0, swap:0, profit, setup:g('mt-setup').value.trim(), emotion:g('mt-emotion').value,
+    commission:0, swap:0, profit, setup, emotion:g('mt-emotion').value,
     notesPre:g('mt-pre').value, notesPost:g('mt-post').value, shots:[]};
   const added=await importTrades([t]);
   document.getElementById('modal-trade').classList.remove('on');

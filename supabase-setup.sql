@@ -107,4 +107,36 @@ drop policy if exists "delete own tx" on public.transactions;
 create policy "delete own tx" on public.transactions
   for delete using (auth.uid() = user_id);
 
+-- 5. Playbooks table (user-defined strategies)
+create table if not exists public.playbooks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  market text default '',
+  timeframe text default '',
+  entry_rules text default '',
+  exit_rules text default '',
+  risk_rules text default '',
+  created_at timestamptz default now(),
+  unique (user_id, name)
+);
+
+alter table public.playbooks enable row level security;
+
+drop policy if exists "select own playbooks" on public.playbooks;
+create policy "select own playbooks" on public.playbooks
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "insert own playbooks" on public.playbooks;
+create policy "insert own playbooks" on public.playbooks
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "update own playbooks" on public.playbooks;
+create policy "update own playbooks" on public.playbooks
+  for update using (auth.uid() = user_id);
+
+drop policy if exists "delete own playbooks" on public.playbooks;
+create policy "delete own playbooks" on public.playbooks
+  for delete using (auth.uid() = user_id);
+
 -- Done. You should see "Success. No rows returned."

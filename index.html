@@ -170,6 +170,34 @@
   .lightbox.on{display:flex}
   .lightbox img{max-width:100%;max-height:100%;border-radius:10px}
 
+  /* modals */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:90;padding:16px}
+  .modal.on{display:flex}
+  .modal-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:22px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto}
+  .modal-card h2{font-size:17px;font-weight:800;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+  .modal-card h2 .x{background:none;border:none;color:var(--muted);font-size:18px}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .form-grid .full{grid-column:1/-1}
+  input[type=datetime-local],input[type=number]{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:11px 12px;font-size:13px;font-family:inherit;color-scheme:dark}
+  body.light input[type=datetime-local],body.light input[type=number]{color-scheme:light}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+  /* playbook wizard */
+  .pb-steps{display:flex;gap:4px;margin-bottom:16px}
+  .pb-steps i{flex:1;height:4px;border-radius:2px;background:var(--panel2)}
+  .pb-steps i.done{background:var(--accent)}
+  .pb-q{font-size:16px;font-weight:800;margin-bottom:8px}
+  .pb-hint{color:var(--muted);font-size:12.5px;margin-bottom:14px;line-height:1.6}
+  .pb-review .item{background:var(--panel2);border-radius:10px;padding:10px 13px;margin-bottom:8px}
+  .pb-review .k{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px}
+  .pb-review .v{font-size:13px;margin-top:3px;white-space:pre-wrap}
+  .rules{color:var(--muted);font-size:12.5px;line-height:1.7;margin:10px 0;white-space:pre-wrap}
+  .rules b{color:var(--text);font-size:11px;text-transform:uppercase;letter-spacing:.5px;display:block;margin-top:8px}
+  .pb-actions{display:flex;gap:8px;margin-top:12px}
+
+  /* mobile header */
+  .m-head{display:none}
+  .icon-btn{background:var(--panel2);border:1px solid var(--border);border-radius:10px;width:38px;height:38px;color:var(--text);font-size:16px;display:flex;align-items:center;justify-content:center}
+
   @media(max-width:1100px){ .stats{grid-template-columns:repeat(2,1fr)} .grid,.detail-grid,.pb-grid{grid-template-columns:1fr} .month-stats{grid-template-columns:repeat(2,1fr)} }
 
   @media(max-width:760px){
@@ -178,7 +206,11 @@
     .nav-item{flex:1;justify-content:center;padding:8px 2px;font-size:10px;flex-direction:column;gap:3px;border-left:none!important;border-radius:12px}
     .nav-item.active{background:rgba(108,92,231,.22)}
     .nav-item svg{width:20px;height:20px}
+    .m-head{display:flex;position:fixed;top:calc(10px + env(safe-area-inset-top));right:12px;z-index:20;gap:8px}
+    .m-head .icon-btn{box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:.92}
     .main{margin-left:0;padding:14px;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+    .main .topbar{padding-right:96px}
+    .form-grid{grid-template-columns:1fr}
     .topbar h1{font-size:18px}
     .topbar .sub{font-size:12px}
     .avatar{display:none}
@@ -228,6 +260,12 @@
 
 <!-- APP -->
 <div class="app" id="app">
+  <div class="m-head">
+    <button class="icon-btn" onclick="toggleTheme()" title="Theme"><span class="theme-ic">☀️</span></button>
+    <button class="icon-btn" onclick="signOut()" title="Sign out">
+      <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+    </button>
+  </div>
   <div class="sidebar">
     <div class="logo">Zella<span>Bek</span></div>
     <div class="nav-item active" data-v="dashboard" onclick="show('dashboard')">
@@ -245,16 +283,13 @@
     <div class="nav-item" data-v="import" onclick="show('import')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 16V4m0 0l-4 4m4-4l4 4"/><path d="M4 20h16"/></svg>
       Import</div>
-    <div class="nav-item" onclick="toggleTheme()">
-      <span id="theme-icon" style="font-size:15px;width:18px;text-align:center;flex-shrink:0">☀️</span>
-      <span id="theme-label">Light mode</span></div>
-    <div class="nav-item" onclick="signOut()">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
-      Logout</div>
     <div class="sync-box">
       <b><span class="dot"></span><span id="user-email"></span></b>
       <div class="muted" id="sync-info">Loading…</div>
-      <button class="signout" onclick="signOut()">Sign out</button>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="signout" style="flex:1;margin-top:0" onclick="toggleTheme()"><span class="theme-ic">☀️</span> <span class="theme-lb">Light</span></button>
+        <button class="signout" style="flex:1;margin-top:0" onclick="signOut()">Sign out</button>
+      </div>
     </div>
   </div>
 
@@ -279,6 +314,7 @@
         <div><h1>Trade Journal</h1><div class="sub" id="journal-sub"></div></div>
         <div class="top-right">
           <select id="j-filter" style="width:auto" onchange="renderJournal()"><option value="">All setups</option></select>
+          <button class="btn" onclick="openTradeModal()">+ Add trade</button>
           <button class="btn ghost" onclick="show('import')">⬆ Import</button>
           <button class="btn danger" onclick="clearAll()">Clear all</button>
         </div>
@@ -303,7 +339,8 @@
     <!-- PLAYBOOK -->
     <div class="views" id="view-playbook">
       <div class="topbar">
-        <div><h1>Playbook</h1><div class="sub">Your setups — and whether they actually pay. Tag trades in the journal to build this.</div></div>
+        <div><h1>Playbook</h1><div class="sub">Your strategies, their rules — and whether they actually pay</div></div>
+        <button class="btn" onclick="openPbWizard()">+ New setup</button>
       </div>
       <div id="playbook-body"></div>
     </div>
@@ -332,13 +369,50 @@
 
 <div class="lightbox" id="lightbox" onclick="this.classList.remove('on')"><img id="lightbox-img" alt=""></div>
 
+<!-- ADD TRADE MODAL -->
+<div class="modal" id="modal-trade">
+  <div class="modal-card">
+    <h2>Add a trade <button class="x" onclick="document.getElementById('modal-trade').classList.remove('on')">✕</button></h2>
+    <div class="form-grid">
+      <div><div class="flabel" style="margin-top:0">Symbol *</div><input type="text" id="mt-symbol" placeholder="XAUUSD"></div>
+      <div><div class="flabel" style="margin-top:0">Side</div>
+        <select id="mt-side"><option value="BUY">BUY</option><option value="SELL">SELL</option></select></div>
+      <div><div class="flabel" style="margin-top:0">Open time *</div><input type="datetime-local" id="mt-open"></div>
+      <div><div class="flabel" style="margin-top:0">Close time</div><input type="datetime-local" id="mt-close"></div>
+      <div><div class="flabel" style="margin-top:0">Lots</div><input type="number" step="0.01" id="mt-lots" placeholder="0.10"></div>
+      <div><div class="flabel" style="margin-top:0">Net P&L ($) *</div><input type="number" step="0.01" id="mt-profit" placeholder="e.g. 125.40 or -60"></div>
+      <div><div class="flabel" style="margin-top:0">Entry price</div><input type="number" step="any" id="mt-entry"></div>
+      <div><div class="flabel" style="margin-top:0">Exit price</div><input type="number" step="any" id="mt-exit"></div>
+      <div><div class="flabel" style="margin-top:0">Stop loss</div><input type="number" step="any" id="mt-sl"></div>
+      <div><div class="flabel" style="margin-top:0">Take profit</div><input type="number" step="any" id="mt-tp"></div>
+      <div><div class="flabel" style="margin-top:0">Setup</div><input type="text" id="mt-setup" list="setup-dl2" placeholder="London Breakout"><datalist id="setup-dl2"></datalist></div>
+      <div><div class="flabel" style="margin-top:0">Emotion</div><select id="mt-emotion"><option value="">—</option></select></div>
+      <div class="full"><div class="flabel" style="margin-top:0">Pre-trade notes</div><textarea id="mt-pre" style="min-height:60px" placeholder="Why did you enter?"></textarea></div>
+      <div class="full"><div class="flabel" style="margin-top:0">Post-trade review</div><textarea id="mt-post" style="min-height:60px" placeholder="What did you learn?"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="document.getElementById('modal-trade').classList.remove('on')">Cancel</button>
+      <button class="btn" onclick="saveManualTrade()">Save trade</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLAYBOOK WIZARD MODAL -->
+<div class="modal" id="modal-pb">
+  <div class="modal-card">
+    <h2><span id="pb-title">New setup</span> <button class="x" onclick="document.getElementById('modal-pb').classList.remove('on')">✕</button></h2>
+    <div class="pb-steps" id="pb-steps"></div>
+    <div id="pb-body"></div>
+  </div>
+</div>
+
 <script>
 /* ================= SUPABASE ================= */
 const SUPABASE_URL = 'https://gwiwyvaznhmjggsrtstl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_QER1M-e9IeezCYrkK7mMLg_-qkrYmDS';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let user = null, trades = [], txs = [], authMode = 'signin';
+let user = null, trades = [], txs = [], playbooks = [], authMode = 'signin';
 let calMonth = null, calPageMonth = null, selDay = null, detailId = null;
 const urlCache = {};
 const EMOTIONS = [['😌','Calm'],['🙂','Confident'],['😐','Neutral'],['😤','Frustrated'],['😰','Anxious'],['😡','Tilted']];
@@ -347,9 +421,8 @@ const EMOTIONS = [['😌','Calm'],['🙂','Confident'],['😐','Neutral'],['😤
 function cssVar(n){ return getComputedStyle(document.body).getPropertyValue(n).trim(); }
 function applyTheme(th){
   document.body.classList.toggle('light', th==='light');
-  const lbl=document.getElementById('theme-label'), ic=document.getElementById('theme-icon');
-  if(lbl) lbl.textContent = th==='light' ? 'Dark mode' : 'Light mode';
-  if(ic) ic.textContent = th==='light' ? '🌙' : '☀️';
+  document.querySelectorAll('.theme-lb').forEach(e=>e.textContent = th==='light' ? 'Dark' : 'Light');
+  document.querySelectorAll('.theme-ic').forEach(e=>e.textContent = th==='light' ? '🌙' : '☀️');
 }
 function toggleTheme(){
   const th=document.body.classList.contains('light')?'dark':'light';
@@ -434,6 +507,8 @@ async function loadTrades(){
   trades=(data||[]).map(fromDb);
   const r2=await sb.from('transactions').select('*').order('time',{ascending:true});
   txs = r2.error ? [] : (r2.data||[]).map(r=>({time:r.time,label:r.label||'',amount:+r.amount}));
+  const r3=await sb.from('playbooks').select('*').order('created_at',{ascending:true});
+  playbooks = r3.error ? [] : (r3.data||[]);
   show('dashboard');
 }
 
@@ -919,7 +994,7 @@ function tradesTable(list){
       <td data-label="P&L" class="${cls(t.profit)}" style="font-weight:800">${signed(t.profit)}</td></tr>`).join('')}
     </tbody></table></div>`;
 }
-function setupList(){ return [...new Set(trades.map(t=>t.setup).filter(Boolean))].sort(); }
+function setupList(){ return [...new Set([...trades.map(t=>t.setup),...playbooks.map(p=>p.name)].filter(Boolean))].sort(); }
 function renderJournal(){
   const filterSel=document.getElementById('j-filter');
   const cur=filterSel.value;
@@ -1061,33 +1136,185 @@ async function removeShot(i){
   if(error) alert(error.message);
 }
 
-/* ================= PLAYBOOK ================= */
+/* ================= MANUAL TRADE ================= */
+function openTradeModal(){
+  const dl=document.getElementById('setup-dl2');
+  dl.innerHTML=setupList().map(s=>`<option value="${esc(s)}">`).join('');
+  const emoSel=document.getElementById('mt-emotion');
+  emoSel.innerHTML='<option value="">—</option>'+EMOTIONS.map(([e,n])=>`<option value="${e}">${e} ${n}</option>`).join('');
+  ['mt-symbol','mt-lots','mt-profit','mt-entry','mt-exit','mt-sl','mt-tp','mt-setup','mt-pre','mt-post'].forEach(id=>document.getElementById(id).value='');
+  const now=new Date(); now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
+  document.getElementById('mt-open').value=now.toISOString().slice(0,16);
+  document.getElementById('mt-close').value=now.toISOString().slice(0,16);
+  document.getElementById('modal-trade').classList.add('on');
+}
+async function saveManualTrade(){
+  const g=id=>document.getElementById(id);
+  const symbol=g('mt-symbol').value.trim().toUpperCase();
+  const profit=parseNum(g('mt-profit').value);
+  const otv=g('mt-open').value, ctv=g('mt-close').value;
+  if(!symbol||isNaN(profit)||!otv){ alert('Symbol, open time and net P&L are required.'); return; }
+  const ot=new Date(otv), ct=ctv?new Date(ctv):ot;
+  const num=v=>{ const n=parseNum(v); return isNaN(n)?null:n; };
+  const t={openTime:ot.toISOString(), closeTime:(ct>=ot?ct:ot).toISOString(), symbol,
+    side:g('mt-side').value, lots:num(g('mt-lots').value), entry:num(g('mt-entry').value),
+    exit:num(g('mt-exit').value), sl:num(g('mt-sl').value), tp:num(g('mt-tp').value),
+    commission:0, swap:0, profit, setup:g('mt-setup').value.trim(), emotion:g('mt-emotion').value,
+    notesPre:g('mt-pre').value, notesPost:g('mt-post').value, shots:[]};
+  const added=await importTrades([t]);
+  document.getElementById('modal-trade').classList.remove('on');
+  show('journal');
+  if(!added) alert('That trade already exists — duplicate skipped.');
+}
+
+/* ================= PLAYBOOK WIZARD ================= */
+const PB_STEPS=[
+  {k:'name', q:'What do you call this setup?', hint:'Give it a short, memorable name — the same name you\'ll tag trades with in the journal.', ph:'e.g. London Breakout', type:'input'},
+  {k:'market', q:'Where does it trade?', hint:'Which markets, pairs or instruments does this setup apply to?', ph:'e.g. XAUUSD, EURUSD — forex majors', type:'input'},
+  {k:'timeframe', q:'When do you trade it?', hint:'Timeframe for entries, higher-timeframe bias, and the session or hours you hunt it.', ph:'e.g. M15 entries, H1 bias · London open 08:00–11:00', type:'input'},
+  {k:'entry_rules', q:'What must be TRUE before you enter?', hint:'Your entry checklist. Be strict — if it\'s not on this list, you don\'t take the trade.', ph:'1. Asian range marked\n2. Sweep of range low\n3. Break & retest of range high\n4. DXY aligned', type:'textarea'},
+  {k:'exit_rules', q:'How do you exit?', hint:'Stop-loss placement, take-profit targets, break-even and trailing rules.', ph:'SL below the sweep low\nTP at 2R or previous high\nMove SL to BE at +1R', type:'textarea'},
+  {k:'risk_rules', q:'How much do you risk?', hint:'Risk per trade, max trades per day, and when you walk away.', ph:'e.g. 1% per trade · max 3 trades/day · stop after 2 losses', type:'input'}
+];
+let pbW={step:0, data:{}, editing:null};
+function openPbWizard(prefillName, editId){
+  pbW={step:0, data:{}, editing:editId||null};
+  if(editId){
+    const p=playbooks.find(x=>x.id===editId);
+    if(p) pbW.data={name:p.name, market:p.market, timeframe:p.timeframe, entry_rules:p.entry_rules, exit_rules:p.exit_rules, risk_rules:p.risk_rules};
+  } else if(prefillName) pbW.data.name=prefillName;
+  document.getElementById('pb-title').textContent=editId?'Edit setup':'New setup';
+  document.getElementById('modal-pb').classList.add('on');
+  renderPbStep();
+}
+function renderPbStep(){
+  const total=PB_STEPS.length+1;
+  document.getElementById('pb-steps').innerHTML=Array.from({length:total},(_,i)=>`<i class="${i<=pbW.step?'done':''}"></i>`).join('');
+  const body=document.getElementById('pb-body');
+  if(pbW.step<PB_STEPS.length){
+    const st=PB_STEPS[pbW.step];
+    const val=esc(pbW.data[st.k]||'');
+    body.innerHTML=`
+      <div class="pb-q">${st.q}</div>
+      <div class="pb-hint">${st.hint}</div>
+      ${st.type==='textarea'
+        ? `<textarea id="pb-input" placeholder="${esc(st.ph)}" style="min-height:120px">${val}</textarea>`
+        : `<input type="text" id="pb-input" placeholder="${esc(st.ph)}" value="${val}">`}
+      <div class="modal-foot">
+        ${pbW.step>0?'<button class="btn ghost" onclick="pbBack()">← Back</button>':''}
+        <button class="btn" onclick="pbNext()">${pbW.step===PB_STEPS.length-1?'Review →':'Next →'}</button>
+      </div>`;
+    const inp=document.getElementById('pb-input');
+    inp.focus();
+    if(st.type!=='textarea') inp.onkeydown=e=>{ if(e.key==='Enter') pbNext(); };
+  } else {
+    const d=pbW.data;
+    body.innerHTML=`
+      <div class="pb-q">Your playbook — ready to save?</div>
+      <div class="pb-review">
+        ${PB_STEPS.map(st=>`<div class="item"><div class="k">${st.q}</div><div class="v">${esc(d[st.k]||'—')}</div></div>`).join('')}
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" onclick="pbBack()">← Back</button>
+        <button class="btn" onclick="savePlaybook()">✓ Save setup</button>
+      </div>`;
+  }
+}
+function pbNext(){
+  const inp=document.getElementById('pb-input');
+  if(inp){
+    const st=PB_STEPS[pbW.step];
+    pbW.data[st.k]=inp.value.trim();
+    if(st.k==='name'&&!pbW.data.name){ alert('Your setup needs a name.'); return; }
+  }
+  pbW.step++; renderPbStep();
+}
+function pbBack(){
+  if(pbW.step<PB_STEPS.length){
+    const inp=document.getElementById('pb-input');
+    if(inp) pbW.data[PB_STEPS[pbW.step].k]=inp.value.trim();
+  }
+  pbW.step--; renderPbStep();
+}
+async function savePlaybook(){
+  const d=pbW.data;
+  if(!d.name){ alert('Your setup needs a name.'); return; }
+  const row={user_id:user.id, name:d.name, market:d.market||'', timeframe:d.timeframe||'',
+    entry_rules:d.entry_rules||'', exit_rules:d.exit_rules||'', risk_rules:d.risk_rules||''};
+  let error;
+  if(pbW.editing) ({error}=await sb.from('playbooks').update(row).eq('id',pbW.editing));
+  else ({error}=await sb.from('playbooks').insert(row));
+  if(error){ alert(error.message.includes('duplicate')?'You already have a setup with that name.':error.message); return; }
+  const r=await sb.from('playbooks').select('*').order('created_at',{ascending:true});
+  playbooks=r.error?[]:(r.data||[]);
+  document.getElementById('modal-pb').classList.remove('on');
+  renderPlaybook();
+}
+async function deletePlaybook(id){
+  if(!confirm('Delete this setup? Trades keep their tags — only the rules are removed.')) return;
+  const {error}=await sb.from('playbooks').delete().eq('id',id);
+  if(error){ alert(error.message); return; }
+  playbooks=playbooks.filter(p=>p.id!==id);
+  renderPlaybook();
+}
+
+/* ================= PLAYBOOK PAGE ================= */
+function pbStatsHtml(list){
+  const g=computeStats(list);
+  if(!g.n) return '<div style="color:var(--muted);font-size:12px;margin:10px 0">No trades tagged with this setup yet — tag them in the journal.</div>';
+  return `<div class="kv" style="margin-top:10px">
+    <div class="item"><div class="k">Win rate</div><div class="v ${g.winRate>=50?'pos':'neg'}">${g.winRate.toFixed(0)}%</div></div>
+    <div class="item"><div class="k">Profit factor</div><div class="v ${g.profitFactor>=1?'pos':'neg'}">${g.profitFactor>=99?'∞':g.profitFactor.toFixed(2)}</div></div>
+    <div class="item"><div class="k">Avg win</div><div class="v pos">${money(g.avgWin,0)}</div></div>
+    <div class="item"><div class="k">Avg loss</div><div class="v neg">−${money(g.avgLoss,0)}</div></div>
+  </div>`;
+}
 function renderPlaybook(){
   const el=document.getElementById('playbook-body');
-  if(!trades.length){
-    el.innerHTML=`<div class="panel"><div class="empty">No trades yet.<br><br><button class="btn" onclick="show('import')">⬆ Import your MT5 statement</button></div></div>`;
-    return;
+  const bySetup={};
+  trades.forEach(t=>{ const k=t.setup||'(untagged)'; bySetup[k]=bySetup[k]||[]; bySetup[k].push(t); });
+  let html='';
+  if(!playbooks.length){
+    html+=`<div class="panel" style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="font-size:13.5px;color:var(--muted)">Define your first strategy — I'll ask you a few quick questions about how you trade it.</div>
+      <button class="btn" onclick="openPbWizard()">✨ Create my first setup</button></div>`;
   }
-  const s=computeStats(trades);
-  const groups=Object.entries(s.bySetup).sort((a,b)=>b[1].reduce((x,t)=>x+t.profit,0)-a[1].reduce((x,t)=>x+t.profit,0));
-  if(groups.length===1&&groups[0][0]==='(untagged)'){
-    el.innerHTML=`<div class="panel"><div class="empty">No setups tagged yet.<br>Open a trade in the <a style="color:var(--accent2);cursor:pointer" onclick="show('journal')">Journal</a> and give it a setup name — your playbook builds itself from there.</div></div>`;
-    return;
-  }
-  el.innerHTML='<div class="pb-grid">'+groups.map(([name,list])=>{
+  html+='<div class="pb-grid">';
+  for(const pb of playbooks){
+    const list=trades.filter(t=>t.setup===pb.name);
     const g=computeStats(list);
-    const untagged=name==='(untagged)';
-    return `<div class="panel">
-      <h3>${untagged?'🏷 Untagged trades':'⚡ '+esc(name)} <span class="tag ${cls(g.net)}" style="font-weight:700">${signed(g.net,0)} · ${g.n} trades</span></h3>
-      <div class="kv">
-        <div class="item"><div class="k">Win rate</div><div class="v ${g.winRate>=50?'pos':'neg'}">${g.winRate.toFixed(0)}%</div></div>
-        <div class="item"><div class="k">Profit factor</div><div class="v ${g.profitFactor>=1?'pos':'neg'}">${g.profitFactor>=99?'∞':g.profitFactor.toFixed(2)}</div></div>
-        <div class="item"><div class="k">Avg win</div><div class="v pos">${money(g.avgWin,0)}</div></div>
-        <div class="item"><div class="k">Avg loss</div><div class="v neg">−${money(g.avgLoss,0)}</div></div>
+    html+=`<div class="panel">
+      <h3>⚡ ${esc(pb.name)} <span class="tag ${cls(g.net)}" style="font-weight:700">${g.n?signed(g.net,0)+' · '+g.n+' trades':'no trades yet'}</span></h3>
+      <div class="rules">${pb.market?`<b>Market</b>${esc(pb.market)}`:''}${pb.timeframe?`<b>Timeframe & session</b>${esc(pb.timeframe)}`:''}${pb.entry_rules?`<b>Entry rules</b>${esc(pb.entry_rules)}`:''}${pb.exit_rules?`<b>Exit rules</b>${esc(pb.exit_rules)}`:''}${pb.risk_rules?`<b>Risk</b>${esc(pb.risk_rules)}`:''}</div>
+      ${pbStatsHtml(list)}
+      <div class="pb-actions">
+        <button class="btn ghost" onclick="openPbWizard(null,'${pb.id}')">✏ Edit</button>
+        <button class="btn danger" onclick="deletePlaybook('${pb.id}')">Delete</button>
       </div>
-      ${untagged?'<div style="color:var(--muted);font-size:12px;margin-top:10px">Tag these trades in the journal to see which strategies really pay.</div>':''}
     </div>`;
-  }).join('')+'</div>';
+  }
+  // setups used on trades but not yet defined as playbooks
+  const defined=new Set(playbooks.map(p=>p.name));
+  for(const [name,list] of Object.entries(bySetup)){
+    if(name==='(untagged)'||defined.has(name)) continue;
+    const g=computeStats(list);
+    html+=`<div class="panel">
+      <h3>🏷 ${esc(name)} <span class="tag ${cls(g.net)}" style="font-weight:700">${signed(g.net,0)} · ${g.n} trades</span></h3>
+      <div style="color:var(--muted);font-size:12.5px;margin-bottom:4px">You've tagged trades with this setup but haven't written its rules yet.</div>
+      ${pbStatsHtml(list)}
+      <div class="pb-actions"><button class="btn ghost" onclick="openPbWizard('${esc(name).replace(/'/g,"\\'")}')">✨ Define the rules</button></div>
+    </div>`;
+  }
+  if(bySetup['(untagged)']){
+    const list=bySetup['(untagged)'], g=computeStats(list);
+    html+=`<div class="panel">
+      <h3>🏷 Untagged trades <span class="tag ${cls(g.net)}" style="font-weight:700">${signed(g.net,0)} · ${g.n} trades</span></h3>
+      <div style="color:var(--muted);font-size:12.5px">Tag these in the journal to see which strategies really pay.</div>
+      ${pbStatsHtml(list)}
+    </div>`;
+  }
+  html+='</div>';
+  el.innerHTML=html;
 }
 
 /* ================= SAMPLE DATA ================= */

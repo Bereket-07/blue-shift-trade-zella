@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0d1017">
 <title>ZellaBek — Trading Journal</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root{
     --bg:#0d1017; --panel:#151a24; --panel2:#1b2130; --border:#242c3d;
@@ -312,13 +313,13 @@
       <div class="drop" id="drop" onclick="document.getElementById('file').click()">
         <svg width="40" height="40" fill="none" stroke="#8b7cf0" stroke-width="1.6" viewBox="0 0 24 24"><path d="M12 16V4m0 0l-4 4m4-4l4 4"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4"/></svg>
         <div class="big">Drop your statement here or click to browse</div>
-        <div class="small">Accepts MT5 report (.html / .htm) and .csv exports</div>
-        <input type="file" id="file" accept=".html,.htm,.csv" style="display:none" multiple>
+        <div class="small">Accepts Exness PDF statements, MT5 reports (.html / .htm) and .csv exports</div>
+        <input type="file" id="file" accept=".html,.htm,.csv,.pdf" style="display:none" multiple>
       </div>
       <div class="msg" id="msg"></div>
       <div class="steps">
+        <div class="panel"><b>📱 From your phone (PDF)</b>Exness Personal Area → your account → ⋮ → Manage statements → Download account statement. Upload the PDF here.</div>
         <div class="panel"><b>💻 From MT5 desktop</b>Toolbox → History tab → right-click → Report → HTML. Then upload the saved file here.</div>
-        <div class="panel"><b>📱 From your phone</b>Log in to your Exness Personal Area in the browser → your account → download statement, then upload it here.</div>
         <div class="panel"><b>☁️ Synced everywhere</b>Your trades, notes and screenshots are stored securely in your account — log in from any device and everything is there.</div>
       </div>
       <div style="margin-top:14px;text-align:center"><button class="btn ghost" onclick="loadSample()">Try with sample data</button></div>
@@ -541,6 +542,64 @@ function parseCSV(text){
   return out;
 }
 
+/* ---- Exness PDF statement ---- */
+function parseStatementLines(lines){
+  // Only rows between "Closed Transactions" and "Open Trades"
+  let start=lines.findIndex(l=>/closed transactions/i.test(l));
+  let end=lines.findIndex((l,i)=>i>start&&/open trades/i.test(l));
+  if(start<0){ start=-1; end=lines.length; }
+  if(end<0) end=lines.length;
+  const out=[];
+  for(let i=start+1;i<end;i++){
+    const tk=lines[i].trim().split(/\s+/);
+    if(tk.length<14) continue;
+    if(!/^\d{5,}$/.test(tk[0])) continue;               // Position ID
+    if(!/^(buy|sell)$/i.test(tk[1])) continue;          // skip balance/credit rows
+    const ot=parseDate(tk[2]+' '+tk[3]);
+    const ct=parseDate(tk[7]+' '+tk[8]);
+    if(!ot||!ct) continue;
+    const entry=parseNum(tk[5]), lots=parseNum(tk[6]), exit=parseNum(tk[9]);
+    // After close price: [close volume?] [S/L T/P?] Commission Taxes Swap Profit
+    let rest=tk.slice(10);
+    if(rest.length&&!isNaN(parseNum(rest[0]))&&Math.abs(parseNum(rest[0])-lots)<1e-9) rest=rest.slice(1);
+    let sl=NaN, tp=NaN, commission=NaN, swap=NaN, profit=NaN;
+    if(rest.length>=6){ sl=parseNum(rest[rest.length-6]); tp=parseNum(rest[rest.length-5]); }
+    if(rest.length>=4){ commission=parseNum(rest[rest.length-4]); swap=parseNum(rest[rest.length-2]); profit=parseNum(rest[rest.length-1]); }
+    if(isNaN(profit)) continue;
+    out.push({
+      openTime:ot.toISOString(),
+      closeTime:(ct&&ct>=ot?ct:ot).toISOString(),
+      symbol:tk[4].toUpperCase(),
+      side:/sell/i.test(tk[1])?'SELL':'BUY',
+      lots:isNaN(lots)?null:lots, entry:isNaN(entry)?null:entry, exit:isNaN(exit)?null:exit,
+      sl:isNaN(sl)||sl===0?null:sl, tp:isNaN(tp)||tp===0?null:tp,
+      commission:isNaN(commission)?0:commission, swap:isNaN(swap)?0:swap, profit,
+      setup:'', emotion:'', notesPre:'', notesPost:'', shots:[]
+    });
+  }
+  return out;
+}
+async function parsePDF(file){
+  if(!window.pdfjsLib) { alert('PDF reader could not load — check your internet connection.'); return []; }
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const lines=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const tc=await page.getTextContent();
+    const rows={};
+    for(const it of tc.items){
+      if(!it.str||!it.str.trim()) continue;
+      const y=Math.round(it.transform[5]/2)*2;  // merge items on the same visual line
+      (rows[y]=rows[y]||[]).push({x:it.transform[4],s:it.str.trim()});
+    }
+    Object.keys(rows).map(Number).sort((a,b)=>b-a)
+      .forEach(y=>lines.push(rows[y].sort((a,b)=>a.x-b.x).map(i=>i.s).join(' ')));
+  }
+  return parseStatementLines(lines);
+}
+
 const drop=document.getElementById('drop'), fileInput=document.getElementById('file'), msg=document.getElementById('msg');
 ['dragover','dragenter'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over');}));
 ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('over');}));
@@ -550,14 +609,24 @@ fileInput.addEventListener('change',()=>{handleFiles(fileInput.files);});
 async function handleFiles(files){
   if(!files.length) return;
   msg.className='msg ok'; msg.textContent='Importing…';
-  let all=[];
+  let all=[], hadPdf=false;
   for(const f of [...files]){
-    const text=await f.text();
-    const parsed=/\.csv$/i.test(f.name)?parseCSV(text):parseHTMLReport(text);
+    let parsed;
+    if(/\.pdf$/i.test(f.name)){ hadPdf=true; parsed=await parsePDF(f); }
+    else{
+      const text=await f.text();
+      parsed=/\.csv$/i.test(f.name)?parseCSV(text):parseHTMLReport(text);
+    }
     all.push(...parsed);
   }
   fileInput.value='';
-  if(!all.length){ msg.className='msg err'; msg.textContent='No trades found in that file. Make sure it\'s an MT5 HTML report or a CSV with symbol/type/profit columns.'; return; }
+  if(!all.length){
+    msg.className='msg err';
+    msg.textContent=hadPdf
+      ? 'No closed trades found in that statement. If your trades were in this period, tell me — the PDF layout may differ slightly.'
+      : 'No trades found in that file. Make sure it\'s an Exness PDF statement, MT5 HTML report, or CSV with symbol/type/profit columns.';
+    return;
+  }
   const added=await importTrades(all);
   msg.className='msg ok';
   msg.textContent=`✓ Imported ${added} new trade${added!==1?'s':''} (${all.length} found, ${all.length-added} duplicates skipped). Total: ${trades.length}`;

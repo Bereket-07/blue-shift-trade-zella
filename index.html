@@ -717,8 +717,14 @@ function zellaScore(s){
 
 /* ================= CHARTS ================= */
 function equityCurve(series){
-  if(!series.length) return '<div class="empty">No data yet</div>';
   const W=600,H=220,P=42;
+  if(!series.length){
+    const gridCol=cssVar('--border')||'#242c3d', lblCol=cssVar('--muted')||'#8b95a8';
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="225">
+      <line x1="${P}" y1="${H/2}" x2="${W-8}" y2="${H/2}" stroke="${gridCol}" stroke-dasharray="4 4"/>
+      <text x="2" y="${H/2+4}" font-size="10" fill="${lblCol}">$0</text>
+      <text x="${W/2}" y="${H/2-14}" text-anchor="middle" font-size="12" fill="${lblCol}">No trades yet — your equity curve starts here</text></svg>`;
+  }
   const vals=series.map(p=>p.v); const min=Math.min(0,...vals), max=Math.max(0,...vals)||1;
   const x=i=>P+(W-P-8)*(series.length===1?0.5:i/(series.length-1));
   const y=v=>12+(H-36)*(1-(v-min)/(max-min||1));
@@ -758,25 +764,21 @@ function renderDash(){
     balChip.style.display='';
     balChip.innerHTML=`Balance: <b class="${cls(bal)}">${money(bal)}</b>`;
   } else balChip.style.display='none';
-  if(!trades.length){
-    el.innerHTML=`<div class="panel"><div class="empty">${txs.length?`Deposits recorded: <b class="pos">${money(txSum)}</b> — no closed trades yet.`:'No trades yet.'}<br><br>
-      <button class="btn" onclick="show('import')">⬆ Import your statement</button>
-      &nbsp; <button class="btn ghost" onclick="loadSample()">Try with sample data</button></div></div>`;
-    document.getElementById('range-sub').textContent='Import your Exness statement to get started';
-    document.getElementById('chip-net').innerHTML='Net P&L: <b>—</b>';
-    syncInfo.innerHTML=txs.length?`Balance ${money(txSum)} · no trades yet`:'No trades yet.<br>Upload a statement in Import.';
-    return;
-  }
+  const hasTrades=trades.length>0;
   const s=computeStats(trades), z=zellaScore(s);
-  const from=new Date(trades[0].closeTime).toLocaleDateString(), to=new Date(trades[trades.length-1].closeTime).toLocaleDateString();
-  document.getElementById('range-sub').textContent=`Your performance · ${from} – ${to}`;
-  document.getElementById('chip-net').innerHTML=`Net P&L: <b class="${cls(s.net)}">${signed(s.net)}</b>`;
-  syncInfo.innerHTML=`${trades.length} trades · synced to your account`;
+  const from=hasTrades?new Date(trades[0].closeTime).toLocaleDateString():'—';
+  const to=hasTrades?new Date(trades[trades.length-1].closeTime).toLocaleDateString():'—';
+  document.getElementById('range-sub').textContent=hasTrades?`Your performance · ${from} – ${to}`:'No closed trades yet — your stats will fill in as you trade';
+  document.getElementById('chip-net').innerHTML=hasTrades?`Net P&L: <b class="${cls(s.net)}">${signed(s.net)}</b>`:'Net P&L: <b>$0.00</b>';
+  syncInfo.innerHTML=hasTrades?`${trades.length} trades · synced to your account`:(txs.length?`Balance ${money(txSum)} · no trades yet`:'No trades yet.<br>Upload a statement in Import.');
 
   const setupEntries=Object.entries(s.bySetup).map(([k,v])=>[k,v.reduce((a,t)=>a+t.profit,0)]).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const hourEntries=Object.entries(s.byHour).sort((a,b)=>a[0]-b[0]).map(([h,v])=>[String(h).padStart(2,'0')+'–'+String(+h+4).padStart(2,'0')+'h',v]);
 
   el.innerHTML=`
+  ${hasTrades?'':`<div class="panel" style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <div style="font-size:13.5px;color:var(--muted)">${txs.length?`Deposits recorded: <b class="pos">${money(txSum)}</b> — no closed trades yet. Your dashboard is ready and waiting.`:'No trades yet — import your statement and your dashboard comes alive.'}</div>
+    <div><button class="btn" onclick="show('import')">⬆ Import statement</button></div></div>`}
   <div class="stats">
     <div class="card"><div class="label">Net P&L</div><div class="value ${cls(s.net)}">${signed(s.net)}</div><div class="delta">${s.n} closed trades</div></div>
     <div class="card"><div class="label">Win Rate</div><div class="value">${s.winRate.toFixed(1)}%</div><div class="delta">${s.wins}W / ${s.losses}L</div></div>
@@ -800,7 +802,14 @@ function renderDash(){
 }
 
 /* ================= CALENDARS ================= */
-function monthsAvailable(){ return [...new Set(trades.map(t=>t.closeTime.slice(0,7)))].sort(); }
+function monthsAvailable(){
+  const m=[...new Set(trades.map(t=>t.closeTime.slice(0,7)))].sort();
+  if(!m.length){
+    const now=new Date();
+    m.push(now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'));
+  }
+  return m;
+}
 function dayMap(month){
   const m={};
   trades.forEach(t=>{ if(t.closeTime.slice(0,7)===month){ const d=+t.closeTime.slice(8,10); m[d]=m[d]||{p:0,n:0}; m[d].p+=t.profit; m[d].n++; }});
@@ -808,7 +817,7 @@ function dayMap(month){
 }
 function renderMiniCal(){
   const panel=document.getElementById('cal-panel'); if(!panel) return;
-  const months=monthsAvailable(); if(!months.length){panel.innerHTML='';return;}
+  const months=monthsAvailable();
   if(!calMonth||!months.includes(calMonth)) calMonth=months[months.length-1];
   const [Y,M]=calMonth.split('-').map(Number);
   const mi=months.indexOf(calMonth);
@@ -840,10 +849,6 @@ function gotoCalDay(month,d){ calPageMonth=month; selDay=d; show('calendar'); }
 function renderCalPage(){
   const el=document.getElementById('calpage-body');
   const months=monthsAvailable();
-  if(!months.length){
-    el.innerHTML=`<div class="panel"><div class="empty">No trades yet.<br><br><button class="btn" onclick="show('import')">⬆ Import your MT5 statement</button></div></div>`;
-    return;
-  }
   if(!calPageMonth||!months.includes(calPageMonth)) calPageMonth=months[months.length-1];
   const [Y,M]=calPageMonth.split('-').map(Number);
   const mi=months.indexOf(calPageMonth);

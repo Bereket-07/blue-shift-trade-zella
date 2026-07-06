@@ -303,6 +303,9 @@
     <div class="nav-item" data-v="playbook" onclick="show('playbook')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
       Playbook</div>
+    <div class="nav-item" data-v="account" onclick="show('account')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3"/><path d="M2 10h20"/><path d="M16 15h2"/></svg>
+      Account</div>
     <div class="nav-item" data-v="import" onclick="show('import')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 16V4m0 0l-4 4m4-4l4 4"/><path d="M4 20h16"/></svg>
       Import</div>
@@ -353,6 +356,18 @@
         <div><h1>P&L Calendar</h1><div class="sub">Your month at a glance — click a day to see its trades</div></div>
       </div>
       <div id="calpage-body"></div>
+    </div>
+
+    <!-- ACCOUNT -->
+    <div class="views" id="view-account">
+      <div class="topbar">
+        <div><h1>Account</h1><div class="sub">Every deposit, withdrawal and trade — with your running balance</div></div>
+        <div class="top-right">
+          <button class="btn dep" onclick="openTxModal('1')">💰 Deposit</button>
+          <button class="btn wd" onclick="openTxModal('-1')">📤 Withdraw</button>
+        </div>
+      </div>
+      <div class="panel scroll-x" id="account-body"></div>
     </div>
 
     <!-- TRADE DETAIL -->
@@ -606,6 +621,7 @@ function show(v){
   if(v==='journal') renderJournal();
   if(v==='calendar') renderCalPage();
   if(v==='playbook') renderPlaybook();
+  if(v==='account') renderAccount();
 }
 function openDetail(id){ detailId=id; renderDetail();
   document.querySelectorAll('.views').forEach(x=>x.classList.remove('active'));
@@ -1324,43 +1340,49 @@ function resetTxForm(){
   document.getElementById('tx-label').value='';
   document.getElementById('tx-date').value=toLocalDT(new Date().toISOString());
 }
-function renderTxList(){
-  const el=document.getElementById('tx-list');
+function ledgerHtml(){
   // Unified ledger: deposits, withdrawals and trade P&L in one timeline
   const events=[
     ...txs.map(t=>({kind:t.amount>=0?'dep':'wd', time:t.time, label:t.label, amount:t.amount, id:t.id})),
     ...trades.map(t=>({kind:'trade', time:t.closeTime, label:t.symbol+' '+t.side, amount:t.profit, tradeId:t.id}))
   ].sort((a,b)=>new Date(a.time)-new Date(b.time));
-  if(!events.length){ el.innerHTML='<div class="empty" style="padding:14px">No activity yet — add your first deposit below.</div>'; return; }
+  if(!events.length) return '<div class="empty" style="padding:14px">No activity yet — add your first deposit.</div>';
   let run=0;
   events.forEach(e=>{ run+=e.amount; e.bal=run; });
   const txSum=txs.reduce((a,t)=>a+t.amount,0);
   const pnl=trades.reduce((a,t)=>a+t.profit,0);
-  el.innerHTML=`
+  return `
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:12px">
     <span class="chip">Deposits − withdrawals: <b class="${cls(txSum)}">${signed(txSum)}</b></span>
     <span class="chip">Trading P&L: <b class="${cls(pnl)}">${signed(pnl)}</b></span>
     <span class="chip">Balance: <b class="${cls(run)}">${money(run)}</b></span>
   </div>
-  <table>
-    <tr><th>Date</th><th>Event</th><th>Amount</th><th>Balance</th><th></th></tr>
-    ${[...events].reverse().map(e=>`<tr>
-      <td style="white-space:nowrap">${new Date(e.time).toLocaleDateString('en',{month:'short',day:'numeric'})}</td>
-      <td style="white-space:nowrap">${
+  <div class="rtable"><table>
+    <thead><tr><th>Date</th><th>Event</th><th>Amount</th><th>Balance</th><th></th></tr></thead>
+    <tbody>${[...events].reverse().map(e=>`<tr>
+      <td data-label="Date" style="white-space:nowrap">${new Date(e.time).toLocaleDateString('en',{month:'short',day:'numeric'})}</td>
+      <td data-label="Event" style="white-space:nowrap">${
         e.kind==='dep'?'<span class="pill buy">💰 DEPOSIT</span>':
         e.kind==='wd'?'<span class="pill sell">📤 WITHDRAWAL</span>':
-        `<span class="pill ${e.amount>=0?'buy':'sell'}" style="background:rgba(108,92,231,.14);color:var(--accent2)">📈 ${esc(e.label)}</span>`
+        `<span class="pill" style="background:rgba(108,92,231,.14);color:var(--accent2)">📈 ${esc(e.label)}</span>`
       }${e.kind!=='trade'&&e.label?` <span style="color:var(--muted);font-size:11px">${esc(e.label)}</span>`:''}</td>
-      <td class="${cls(e.amount)}" style="font-weight:800;white-space:nowrap">${signed(e.amount)}</td>
-      <td style="font-weight:700;white-space:nowrap;color:${e.bal>=0?'var(--text)':'var(--red)'}">${money(e.bal)}</td>
-      <td style="white-space:nowrap;text-align:right">${
+      <td data-label="Amount" class="${cls(e.amount)}" style="font-weight:800;white-space:nowrap">${signed(e.amount)}</td>
+      <td data-label="Balance" style="font-weight:700;white-space:nowrap;color:${e.bal>=0?'var(--text)':'var(--red)'}">${money(e.bal)}</td>
+      <td data-label="Manage" style="white-space:nowrap;text-align:right">${
         e.kind==='trade'
-        ?`<button class="btn ghost" style="padding:5px 9px" title="Open trade" onclick="document.getElementById('modal-tx').classList.remove('on');openDetail('${esc(e.tradeId).replace(/'/g,"\\'")}')">→</button>`
+        ?`<button class="btn ghost" style="padding:5px 9px" title="Open trade" onclick="document.getElementById('modal-tx').classList.remove('on');openDetail('${esc(e.tradeId).replace(/'/g,"\\'")}')">Open →</button>`
         :`<button class="btn ghost" style="padding:5px 9px" onclick="editTxFn('${e.id}')">✏</button>
            <button class="btn danger" style="padding:5px 9px" onclick="delTx('${e.id}')">✕</button>`
       }</td>
     </tr>`).join('')}
-  </table>`;
+    </tbody></table></div>`;
+}
+function renderTxList(){ document.getElementById('tx-list').innerHTML=ledgerHtml(); }
+function renderAccount(){ document.getElementById('account-body').innerHTML=ledgerHtml(); }
+function refreshTxViews(){
+  renderTxList();
+  if(document.getElementById('view-account').classList.contains('active')) renderAccount();
+  renderDash();
 }
 function openTxModal(presetType){
   resetTxForm();
@@ -1374,6 +1396,7 @@ function openTxModal(presetType){
 }
 function editTxFn(id){
   const t=txs.find(x=>x.id===id); if(!t) return;
+  if(!document.getElementById('modal-tx').classList.contains('on')){ renderTxList(); document.getElementById('modal-tx').classList.add('on'); }
   editingTx=id;
   document.getElementById('tx-form-title').textContent='Edit transaction';
   document.getElementById('tx-cancel').style.display='';
@@ -1397,8 +1420,7 @@ async function saveTx(){
   if(error){ alert(error.message.includes('duplicate')?'An identical transaction already exists.':error.message); return; }
   await reloadTxs();
   resetTxForm();
-  renderTxList();
-  renderDash();
+  refreshTxViews();
 }
 async function delTx(id){
   if(!confirm('Delete this transaction?')) return;
@@ -1406,8 +1428,7 @@ async function delTx(id){
   if(error){ alert(error.message); return; }
   txs=txs.filter(t=>t.id!==id);
   if(editingTx===id) resetTxForm();
-  renderTxList();
-  renderDash();
+  refreshTxViews();
 }
 async function deleteTrade(){
   const t=trades.find(x=>x.id===detailId); if(!t) return;

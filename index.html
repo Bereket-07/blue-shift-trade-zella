@@ -284,6 +284,7 @@
 <!-- APP -->
 <div class="app" id="app">
   <div class="m-head">
+    <button class="icon-btn" onclick="openRateModal()" title="Rate ZellaBek">⭐</button>
     <button class="icon-btn" onclick="toggleTheme()" title="Theme"><span class="theme-ic">☀️</span></button>
     <button class="icon-btn" onclick="signOut()" title="Sign out">
       <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
@@ -309,6 +310,9 @@
     <div class="nav-item" data-v="import" onclick="show('import')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 16V4m0 0l-4 4m4-4l4 4"/><path d="M4 20h16"/></svg>
       Import</div>
+    <div class="nav-item" id="nav-admin" data-v="admin" style="display:none" onclick="show('admin')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+      Admin</div>
     <div class="sync-box">
       <b><span class="dot"></span><span id="user-email"></span></b>
       <div class="muted" id="sync-info">Loading…</div>
@@ -316,6 +320,7 @@
         <button class="signout" style="flex:1;margin-top:0" onclick="toggleTheme()"><span class="theme-ic">☀️</span> <span class="theme-lb">Light</span></button>
         <button class="signout" style="flex:1;margin-top:0" onclick="signOut()">Sign out</button>
       </div>
+      <button class="signout" onclick="openRateModal()">⭐ Rate ZellaBek</button>
     </div>
   </div>
 
@@ -368,6 +373,15 @@
         </div>
       </div>
       <div class="panel scroll-x" id="account-body"></div>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="views" id="view-admin">
+      <div class="topbar">
+        <div><h1>Admin</h1><div class="sub">Users, performance rankings, usage & ratings</div></div>
+        <button class="btn ghost" onclick="renderAdmin()">↻ Refresh</button>
+      </div>
+      <div id="admin-body"></div>
     </div>
 
     <!-- TRADE DETAIL -->
@@ -467,6 +481,17 @@
   </div>
 </div>
 
+<!-- RATING MODAL -->
+<div class="modal" id="modal-rate">
+  <div class="modal-card" style="max-width:440px">
+    <h2>Rate ZellaBek <button class="x" onclick="document.getElementById('modal-rate').classList.remove('on')">✕</button></h2>
+    <div class="pb-hint">How is your experience? Your feedback goes straight to the team.</div>
+    <div id="rate-stars" style="display:flex;gap:8px;justify-content:center;font-size:34px;margin:10px 0 16px;cursor:pointer"></div>
+    <textarea id="rate-feedback" placeholder="What do you love? What should improve?" style="min-height:90px"></textarea>
+    <div class="modal-foot"><button class="btn" onclick="saveRating()">Send rating</button></div>
+  </div>
+</div>
+
 <!-- PLAYBOOK WIZARD MODAL -->
 <div class="modal" id="modal-pb">
   <div class="modal-card">
@@ -482,7 +507,7 @@ const SUPABASE_URL = 'https://gwiwyvaznhmjggsrtstl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_QER1M-e9IeezCYrkK7mMLg_-qkrYmDS';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let user = null, trades = [], txs = [], playbooks = [], authMode = 'signin';
+let user = null, trades = [], txs = [], playbooks = [], authMode = 'signin', isAdmin = false;
 let calMonth = null, calPageMonth = null, selDay = null, detailId = null;
 const urlCache = {};
 const EMOTIONS = [['😌','Calm'],['🙂','Confident'],['😐','Neutral'],['😤','Frustrated'],['😰','Anxious'],['😡','Tilted']];
@@ -551,8 +576,28 @@ function setUser(u){
     document.getElementById('user-email').textContent=u.email||name;
     document.getElementById('avatar').textContent=(u.email||name)[0];
     window._name=name.split(' ')[0];
-    loadTrades();
+    initProfile().then(ok=>{ if(ok) loadTrades(); });
   }
+}
+async function initProfile(){
+  isAdmin=false;
+  try{
+    let {data:p}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
+    if(!p){
+      const ins=await sb.from('profiles').insert({id:user.id,email:user.email}).select().maybeSingle();
+      p=ins.data||{is_admin:false,is_blocked:false,visits:0};
+    }else{
+      sb.from('profiles').update({last_seen:new Date().toISOString(),visits:(p.visits||0)+1}).eq('id',user.id).then(()=>{});
+    }
+    if(p.is_blocked){
+      alert('Your account has been blocked by the administrator. Contact support if you think this is a mistake.');
+      await signOut();
+      return false;
+    }
+    isAdmin=!!p.is_admin;
+  }catch(e){ /* profiles table not created yet — app still works */ }
+  document.getElementById('nav-admin').style.display=isAdmin?'':'none';
+  return true;
 }
 async function init(){
   const {data:{session}}=await sb.auth.getSession();
@@ -572,12 +617,12 @@ function toDb(t){ return {user_id:user.id, trade_key:t.id, open_time:t.openTime,
   setup:t.setup||'', emotion:t.emotion||'', notes_pre:t.notesPre||'', notes_post:t.notesPost||'', shots:t.shots||[]}; }
 
 async function loadTrades(){
-  const {data,error}=await sb.from('trades').select('*').order('close_time',{ascending:true});
+  const {data,error}=await sb.from('trades').select('*').eq('user_id',user.id).order('close_time',{ascending:true});
   if(error){ alert('Could not load trades: '+error.message); return; }
   trades=(data||[]).map(fromDb);
-  const r2=await sb.from('transactions').select('*').order('time',{ascending:true});
+  const r2=await sb.from('transactions').select('*').eq('user_id',user.id).order('time',{ascending:true});
   txs = r2.error ? [] : (r2.data||[]).map(r=>({id:r.id,time:r.time,label:r.label||'',amount:+r.amount}));
-  const r3=await sb.from('playbooks').select('*').order('created_at',{ascending:true});
+  const r3=await sb.from('playbooks').select('*').eq('user_id',user.id).order('created_at',{ascending:true});
   playbooks = r3.error ? [] : (r3.data||[]);
   show(loadTrades._view||'dashboard');
   loadTrades._view=null;
@@ -622,6 +667,7 @@ function show(v){
   if(v==='calendar') renderCalPage();
   if(v==='playbook') renderPlaybook();
   if(v==='account') renderAccount();
+  if(v==='admin') renderAdmin();
 }
 function openDetail(id){ detailId=id; renderDetail();
   document.querySelectorAll('.views').forEach(x=>x.classList.remove('active'));
@@ -1328,7 +1374,7 @@ function setupOptionsHtml(current){
     +'<option value="__new">➕ New setup…</option>';
 }
 async function reloadTxs(){
-  const r=await sb.from('transactions').select('*').order('time',{ascending:true});
+  const r=await sb.from('transactions').select('*').eq('user_id',user.id).order('time',{ascending:true});
   txs = r.error ? [] : (r.data||[]).map(x=>({id:x.id,time:x.time,label:x.label||'',amount:+x.amount}));
 }
 function resetTxForm(){
@@ -1517,7 +1563,7 @@ async function savePlaybook(){
   if(pbW.editing) ({error}=await sb.from('playbooks').update(row).eq('id',pbW.editing));
   else ({error}=await sb.from('playbooks').insert(row));
   if(error){ alert(error.message.includes('duplicate')?'You already have a setup with that name.':error.message); return; }
-  const r=await sb.from('playbooks').select('*').order('created_at',{ascending:true});
+  const r=await sb.from('playbooks').select('*').eq('user_id',user.id).order('created_at',{ascending:true});
   playbooks=r.error?[]:(r.data||[]);
   document.getElementById('modal-pb').classList.remove('on');
   renderPlaybook();
@@ -1620,6 +1666,138 @@ async function loadSample(){
   }
   await importTrades(out);
   show('dashboard');
+}
+
+/* ================= RATINGS ================= */
+let myStars=0;
+function paintStars(){
+  document.getElementById('rate-stars').innerHTML=
+    [1,2,3,4,5].map(n=>`<span onclick="myStars=${n};paintStars()" style="filter:${n<=myStars?'none':'grayscale(1) opacity(.4)'}">⭐</span>`).join('');
+}
+async function openRateModal(){
+  myStars=0;
+  document.getElementById('rate-feedback').value='';
+  try{
+    const {data}=await sb.from('ratings').select('*').eq('user_id',user.id).maybeSingle();
+    if(data){ myStars=data.stars; document.getElementById('rate-feedback').value=data.feedback||''; }
+  }catch(e){}
+  paintStars();
+  document.getElementById('modal-rate').classList.add('on');
+}
+async function saveRating(){
+  if(!myStars){ alert('Tap the stars to pick a rating.'); return; }
+  const {error}=await sb.from('ratings').upsert({
+    user_id:user.id, stars:myStars,
+    feedback:document.getElementById('rate-feedback').value.trim(),
+    updated_at:new Date().toISOString()
+  },{onConflict:'user_id'});
+  if(error){ alert(error.message); return; }
+  document.getElementById('modal-rate').classList.remove('on');
+}
+
+/* ================= ADMIN ================= */
+let adminUsers={};
+async function renderAdmin(){
+  const el=document.getElementById('admin-body');
+  if(!isAdmin){ el.innerHTML='<div class="panel"><div class="empty">Admins only.</div></div>'; return; }
+  el.innerHTML='<div class="panel"><div class="empty">Loading users…</div></div>';
+  const [pr,tr,ra]=await Promise.all([
+    sb.from('profiles').select('*'),
+    sb.from('trades').select('user_id,profit,setup,close_time'),
+    sb.from('ratings').select('*')
+  ]);
+  if(pr.error){ el.innerHTML=`<div class="panel"><div class="empty">${esc(pr.error.message)}<br>Make sure you ran the admin SQL (section 6) in Supabase.</div></div>`; return; }
+  const profs=pr.data||[], allT=tr.data||[], allR=ra.data||[];
+  adminUsers={};
+  profs.forEach(p=>adminUsers[p.id]={p, trades:[], rating:null});
+  allT.forEach(t=>{ if(adminUsers[t.user_id]) adminUsers[t.user_id].trades.push(t); });
+  allR.forEach(r=>{ if(adminUsers[r.user_id]) adminUsers[r.user_id].rating=r; });
+
+  const rows=Object.values(adminUsers).map(u=>{
+    const wins=u.trades.filter(t=>+t.profit>0).length;
+    const net=u.trades.reduce((a,t)=>a+ +t.profit,0);
+    const bySetup={};
+    u.trades.forEach(t=>{ if(t.setup) bySetup[t.setup]=(bySetup[t.setup]||0)+ +t.profit; });
+    const best=Object.entries(bySetup).sort((a,b)=>b[1]-a[1])[0];
+    return {u, net, n:u.trades.length, winRate:u.trades.length?wins/u.trades.length*100:0, best};
+  }).sort((a,b)=>b.net-a.net);
+
+  const avgR=allR.length?allR.reduce((a,r)=>a+r.stars,0)/allR.length:0;
+  const week=Date.now()-7*864e5;
+  const medal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
+
+  el.innerHTML=`
+  <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+    <div class="card"><div class="label">Users</div><div class="value">${profs.length}</div><div class="delta">${profs.filter(p=>p.is_blocked).length} blocked</div></div>
+    <div class="card"><div class="label">Active last 7 days</div><div class="value">${profs.filter(p=>new Date(p.last_seen)>week).length}</div><div class="delta">by last visit</div></div>
+    <div class="card"><div class="label">Total trades</div><div class="value">${allT.length}</div><div class="delta">across all users</div></div>
+    <div class="card"><div class="label">App rating</div><div class="value" style="color:var(--gold)">${allR.length?avgR.toFixed(1)+' ⭐':'—'}</div><div class="delta">${allR.length} rating${allR.length!==1?'s':''}</div></div>
+  </div>
+  <div class="panel scroll-x">
+    <h3>User rankings <span class="tag">by net P&L</span></h3>
+    <div class="rtable"><table>
+      <thead><tr><th>Rank</th><th>User</th><th>Last seen</th><th>Visits</th><th>Trades</th><th>Win %</th><th>Net P&L</th><th>Best setup</th><th>Rating</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rows.map((r,i)=>`<tr>
+        <td data-label="Rank" style="font-weight:800">${medal(i)}</td>
+        <td data-label="User" style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.u.p.email)}">${esc(r.u.p.email||'—')}${r.u.p.is_admin?' <span class="pill setup">ADMIN</span>':''}</td>
+        <td data-label="Last seen">${r.u.p.last_seen?new Date(r.u.p.last_seen).toLocaleDateString('en',{month:'short',day:'numeric'}):'—'}</td>
+        <td data-label="Visits">${r.u.p.visits||0}</td>
+        <td data-label="Trades">${r.n}</td>
+        <td data-label="Win %">${r.n?r.winRate.toFixed(0)+'%':'—'}</td>
+        <td data-label="Net P&L" class="${cls(r.net)}" style="font-weight:800">${signed(r.net,0)}</td>
+        <td data-label="Best setup">${r.best?`<span class="pill setup">${esc(r.best[0])}</span>`:'—'}</td>
+        <td data-label="Rating">${r.u.rating?'⭐'.repeat(r.u.rating.stars):'—'}</td>
+        <td data-label="Status">${r.u.p.is_blocked?'<span class="pill sell">BLOCKED</span>':'<span class="pill buy">ACTIVE</span>'}</td>
+        <td data-label="Manage" style="white-space:nowrap;text-align:right">
+          <button class="btn ghost" style="padding:5px 9px" title="Details" onclick="adminDetail('${r.u.p.id}')">👁</button>
+          ${r.u.p.is_admin?'':`
+          <button class="btn ${r.u.p.is_blocked?'dep':'wd'}" style="padding:5px 9px" onclick="adminSetBlocked('${r.u.p.id}',${!r.u.p.is_blocked})">${r.u.p.is_blocked?'Unblock':'Block'}</button>
+          <button class="btn danger" style="padding:5px 9px" title="Wipe all data" onclick="adminWipe('${r.u.p.id}','${esc(r.u.p.email||'')}')">🗑</button>`}
+        </td>
+      </tr>`).join('')}
+      </tbody></table></div>
+    <div id="admin-detail"></div>
+  </div>`;
+}
+function adminDetail(id){
+  const u=adminUsers[id]; if(!u) return;
+  const wins=u.trades.filter(t=>+t.profit>0), losses=u.trades.filter(t=>+t.profit<0);
+  const gw=wins.reduce((a,t)=>a+ +t.profit,0), gl=Math.abs(losses.reduce((a,t)=>a+ +t.profit,0));
+  const net=u.trades.reduce((a,t)=>a+ +t.profit,0);
+  const bySetup={};
+  u.trades.forEach(t=>{ if(t.setup){ bySetup[t.setup]=bySetup[t.setup]||{net:0,n:0}; bySetup[t.setup].net+= +t.profit; bySetup[t.setup].n++; }});
+  const setups=Object.entries(bySetup).sort((a,b)=>b[1].net-a[1].net).slice(0,5);
+  document.getElementById('admin-detail').innerHTML=`
+  <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px">
+    <h3>${esc(u.p.email||'User')} — details</h3>
+    <div class="kv" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="item"><div class="k">Joined</div><div class="v">${u.p.created_at?new Date(u.p.created_at).toLocaleDateString():'—'}</div></div>
+      <div class="item"><div class="k">Last seen</div><div class="v">${u.p.last_seen?new Date(u.p.last_seen).toLocaleString():'—'}</div></div>
+      <div class="item"><div class="k">Visits</div><div class="v">${u.p.visits||0}</div></div>
+      <div class="item"><div class="k">Trades</div><div class="v">${u.trades.length}</div></div>
+      <div class="item"><div class="k">Net P&L</div><div class="v ${cls(net)}">${signed(net)}</div></div>
+      <div class="item"><div class="k">Win rate</div><div class="v">${u.trades.length?(wins.length/u.trades.length*100).toFixed(0)+'%':'—'}</div></div>
+      <div class="item"><div class="k">Profit factor</div><div class="v">${gl>0?(gw/gl).toFixed(2):(gw>0?'∞':'—')}</div></div>
+      <div class="item"><div class="k">Rating</div><div class="v">${u.rating?'⭐'.repeat(u.rating.stars):'not rated'}</div></div>
+    </div>
+    ${setups.length?`<div class="flabel">Top setups</div>${setups.map(([n,s])=>`<div class="bar-row"><div class="name" title="${esc(n)}">${esc(n)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(6,Math.abs(s.net)/Math.max(...setups.map(x=>Math.abs(x[1].net)),1)*100)}%;background:${s.net>=0?'var(--green)':'var(--red)'}"></div></div><div class="val ${cls(s.net)}">${signed(s.net,0)}</div></div>`).join('')}`:''}
+    ${u.rating&&u.rating.feedback?`<div class="flabel">Feedback</div><div class="pb-review"><div class="item"><div class="v">"${esc(u.rating.feedback)}"</div></div></div>`:''}
+  </div>`;
+  document.getElementById('admin-detail').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+async function adminSetBlocked(id, blocked){
+  if(!confirm(blocked?'Block this user? They will not be able to use the app.':'Unblock this user?')) return;
+  const {error}=await sb.rpc('admin_set_blocked',{target:id, blocked});
+  if(error){ alert(error.message); return; }
+  renderAdmin();
+}
+async function adminWipe(id, email){
+  if(!confirm(`Wipe ALL data for ${email||'this user'}? Trades, transactions, playbooks and rating will be permanently deleted. (Their login remains — block them too if needed. Full account deletion: Supabase dashboard → Authentication → Users.)`)) return;
+  for(const table of ['trades','transactions','playbooks','ratings']){
+    const {error}=await sb.from(table).delete().eq('user_id',id);
+    if(error){ alert(table+': '+error.message); return; }
+  }
+  renderAdmin();
 }
 
 /* init */

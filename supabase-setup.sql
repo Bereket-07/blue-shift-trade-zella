@@ -257,6 +257,10 @@ create policy "admin delete any ratings" on public.ratings
   for delete using (public.is_admin(auth.uid()));
 
 -- ============================================================
+-- 6b. Data-source tracking (where each trade/transaction came from)
+alter table public.trades add column if not exists source text default '';
+alter table public.transactions add column if not exists source text default '';
+
 -- 7. MAKE YOURSELF ADMIN (edit the email, run after logging in once)
 -- ============================================================
 update public.profiles set is_admin = true

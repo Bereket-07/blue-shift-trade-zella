@@ -610,11 +610,11 @@ function fromDb(r){ return {dbId:r.id, id:r.trade_key, openTime:r.open_time, clo
   symbol:r.symbol, side:r.side, lots:r.lots===null?null:+r.lots, entry:r.entry===null?null:+r.entry,
   exit:r.exit===null?null:+r.exit, sl:r.sl===null?null:+r.sl, tp:r.tp===null?null:+r.tp,
   commission:+(r.commission||0), swap:+(r.swap||0), profit:+r.profit,
-  setup:r.setup||'', emotion:r.emotion||'', notesPre:r.notes_pre||'', notesPost:r.notes_post||'', shots:r.shots||[]}; }
+  setup:r.setup||'', emotion:r.emotion||'', notesPre:r.notes_pre||'', notesPost:r.notes_post||'', shots:r.shots||[], source:r.source||''}; }
 function toDb(t){ return {user_id:user.id, trade_key:t.id, open_time:t.openTime, close_time:t.closeTime,
   symbol:t.symbol, side:t.side, lots:t.lots, entry:t.entry, exit:t.exit, sl:t.sl, tp:t.tp,
   commission:t.commission||0, swap:t.swap||0, profit:t.profit,
-  setup:t.setup||'', emotion:t.emotion||'', notes_pre:t.notesPre||'', notes_post:t.notesPost||'', shots:t.shots||[]}; }
+  setup:t.setup||'', emotion:t.emotion||'', notes_pre:t.notesPre||'', notes_post:t.notesPost||'', shots:t.shots||[], source:t.source||''}; }
 
 async function loadTrades(){
   const {data,error}=await sb.from('trades').select('*').eq('user_id',user.id).order('close_time',{ascending:true});
@@ -634,7 +634,7 @@ async function importTxs(list){
   const seen=new Set(); const rows=[];
   for(const t of list){
     const k=txKey(t);
-    if(!seen.has(k)){ seen.add(k); rows.push({user_id:user.id, tx_key:k, time:t.time, label:t.label, amount:t.amount}); }
+    if(!seen.has(k)){ seen.add(k); rows.push({user_id:user.id, tx_key:k, time:t.time, label:t.label, amount:t.amount, source:t.source||''}); }
   }
   const {data,error}=await sb.from('transactions')
     .upsert(rows,{onConflict:'user_id,tx_key',ignoreDuplicates:true})
@@ -719,7 +719,7 @@ function parseHTMLReport(text){
       lots: isNaN(lots)?null:lots, entry: isNaN(entry)?null:entry, exit: isNaN(exit)?null:exit,
       sl: isNaN(sl)||sl===0?null:sl, tp: isNaN(tp)||tp===0?null:tp,
       commission: isNaN(commission)?0:commission, swap: isNaN(swap)?0:swap, profit,
-      setup:'', emotion:'', notesPre:'', notesPost:'', shots:[]
+      setup:'', emotion:'', notesPre:'', notesPost:'', shots:[], source:'mt5-report'
     });
   }
   return found;
@@ -747,7 +747,7 @@ function parseCSV(text){
       symbol:c[iSym].toUpperCase(), side:/sell/.test(side)?'SELL':'BUY',
       lots:iLots>=0?parseNum(c[iLots]):null, entry:iEntry>=0?parseNum(c[iEntry]):null,
       exit:iExit>=0?parseNum(c[iExit]):null, sl:null, tp:null, commission:0, swap:0, profit,
-      setup:'', emotion:'', notesPre:'', notesPost:'', shots:[]
+      setup:'', emotion:'', notesPre:'', notesPost:'', shots:[], source:'csv'
     });
   }
   return out;
@@ -770,7 +770,7 @@ function parseStatementLines(lines){
       const bt=parseDate(tk[2]+' '+tk[3]);
       const amount=parseNum(tk[tk.length-1]);
       if(bt&&!isNaN(amount)&&amount!==0){
-        txs.push({time:bt.toISOString(), label:tk.slice(4,tk.length-1).join(' '), amount});
+        txs.push({time:bt.toISOString(), label:tk.slice(4,tk.length-1).join(' '), amount, source:'pdf'});
       }
       continue;
     }
@@ -795,7 +795,7 @@ function parseStatementLines(lines){
       lots:isNaN(lots)?null:lots, entry:isNaN(entry)?null:entry, exit:isNaN(exit)?null:exit,
       sl:isNaN(sl)||sl===0?null:sl, tp:isNaN(tp)||tp===0?null:tp,
       commission:isNaN(commission)?0:commission, swap:isNaN(swap)?0:swap, profit,
-      setup:'', emotion:'', notesPre:'', notesPost:'', shots:[]
+      setup:'', emotion:'', notesPre:'', notesPost:'', shots:[], source:'pdf'
     });
   }
   return {trades:out, txs};
@@ -918,11 +918,13 @@ function equityCurve(series){
       <text x="2" y="${H/2+4}" font-size="10" fill="${lblCol}">$0</text>
       <text x="${W/2}" y="${H/2-14}" text-anchor="middle" font-size="12" fill="${lblCol}">No trades yet — your equity curve starts here</text></svg>`;
   }
+  series=[{v:0},...series]; // cumulative P&L always starts at $0
   const vals=series.map(p=>p.v); const min=Math.min(0,...vals), max=Math.max(0,...vals)||1;
-  const x=i=>P+(W-P-8)*(series.length===1?0.5:i/(series.length-1));
+  const x=i=>P+(W-P-8)*(i/(series.length-1));
   const y=v=>12+(H-36)*(1-(v-min)/(max-min||1));
   const line=series.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
   const area=line+` L${x(series.length-1).toFixed(1)},${y(0)} L${x(0).toFixed(1)},${y(0)} Z`;
+  const lastX=x(series.length-1), lastY=y(series[series.length-1].v);
   const col=series[series.length-1].v>=0?(cssVar('--green')||'#22c47a'):(cssVar('--red')||'#f0506e');
   const gridCol=cssVar('--border')||'#242c3d', lblCol=cssVar('--muted')||'#8b95a8';
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="225">
@@ -930,6 +932,7 @@ function equityCurve(series){
     <line x1="${P}" y1="${y(0)}" x2="${W-8}" y2="${y(0)}" stroke="${gridCol}"/>
     <path d="${area}" fill="url(#g1)"/>
     <path d="${line}" fill="none" stroke="${col}" stroke-width="2.5"/>
+    <circle cx="${lastX}" cy="${lastY}" r="4" fill="${col}"/>
     <text x="2" y="${y(max)+4}" font-size="10" fill="${lblCol}">${money(max,0)}</text>
     <text x="2" y="${y(0)+4}" font-size="10" fill="${lblCol}">$0</text>
     ${min<0?`<text x="2" y="${y(min)+4}" font-size="10" fill="${lblCol}">−${money(Math.abs(min),0)}</text>`:''}</svg>`;
@@ -1321,7 +1324,7 @@ async function saveManualTrade(){
     side:g('mt-side').value, lots:num(g('mt-lots').value), entry:num(g('mt-entry').value),
     exit:num(g('mt-exit').value), sl:num(g('mt-sl').value), tp:num(g('mt-tp').value),
     commission:0, swap:0, profit, setup, emotion:g('mt-emotion').value,
-    notesPre:g('mt-pre').value, notesPost:g('mt-post').value, shots:[]};
+    notesPre:g('mt-pre').value, notesPost:g('mt-post').value, shots:[], source:'manual'};
   const files=g('mt-shots').files;
   if(editingTrade){
     const old=trades.find(x=>x.dbId===editingTrade);
@@ -1462,7 +1465,7 @@ async function saveTx(){
   const key=txKey({time,label,amount});
   let error;
   if(editingTx) ({error}=await sb.from('transactions').update({time,label,amount,tx_key:key}).eq('id',editingTx));
-  else ({error}=await sb.from('transactions').insert({user_id:user.id,tx_key:key,time,label,amount}));
+  else ({error}=await sb.from('transactions').insert({user_id:user.id,tx_key:key,time,label,amount,source:'manual'}));
   if(error){ alert(error.message.includes('duplicate')?'An identical transaction already exists.':error.message); return; }
   await reloadTxs();
   resetTxForm();
@@ -1661,7 +1664,7 @@ async function loadSample(){
         entry:+(1+rnd()*2).toFixed(4),exit:+(1+rnd()*2).toFixed(4),sl:null,tp:null,
         commission:0,swap:0,profit:+profit.toFixed(2),
         setup:setups[si], emotion:EMOTIONS[Math.floor(rnd()*EMOTIONS.length)][0],
-        notesPre:'', notesPost:'', shots:[]});
+        notesPre:'', notesPost:'', shots:[], source:'sample'});
     }
   }
   await importTrades(out);
@@ -1697,20 +1700,31 @@ async function saveRating(){
 
 /* ================= ADMIN ================= */
 let adminUsers={};
+const SOURCE_LABELS={'pdf':'📄 Exness PDF','mt5-report':'💻 MT5 report','csv':'📑 CSV','manual':'✍ Manual entry','sample':'🧪 Sample data','':'❓ Earlier import'};
+function sourceCounts(list){
+  const c={};
+  list.forEach(t=>{ const k=t.source||''; c[k]=(c[k]||0)+1; });
+  return Object.entries(c).sort((a,b)=>b[1]-a[1]);
+}
+function sourceSummary(u){
+  return sourceCounts(u.trades).map(([k,n])=>`${SOURCE_LABELS[k]||k} (${n})`).join(', ');
+}
 async function renderAdmin(){
   const el=document.getElementById('admin-body');
   if(!isAdmin){ el.innerHTML='<div class="panel"><div class="empty">Admins only.</div></div>'; return; }
   el.innerHTML='<div class="panel"><div class="empty">Loading users…</div></div>';
-  const [pr,tr,ra]=await Promise.all([
+  const [pr,tr,ra,tx]=await Promise.all([
     sb.from('profiles').select('*'),
-    sb.from('trades').select('user_id,profit,setup,close_time'),
-    sb.from('ratings').select('*')
+    sb.from('trades').select('user_id,profit,setup,close_time,source'),
+    sb.from('ratings').select('*'),
+    sb.from('transactions').select('user_id,amount,time,source')
   ]);
   if(pr.error){ el.innerHTML=`<div class="panel"><div class="empty">${esc(pr.error.message)}<br>Make sure you ran the admin SQL (section 6) in Supabase.</div></div>`; return; }
-  const profs=pr.data||[], allT=tr.data||[], allR=ra.data||[];
+  const profs=pr.data||[], allT=tr.data||[], allR=ra.data||[], allTx=tx.error?[]:(tx.data||[]);
   adminUsers={};
-  profs.forEach(p=>adminUsers[p.id]={p, trades:[], rating:null});
+  profs.forEach(p=>adminUsers[p.id]={p, trades:[], txs:[], rating:null});
   allT.forEach(t=>{ if(adminUsers[t.user_id]) adminUsers[t.user_id].trades.push(t); });
+  allTx.forEach(t=>{ if(adminUsers[t.user_id]) adminUsers[t.user_id].txs.push(t); });
   allR.forEach(r=>{ if(adminUsers[r.user_id]) adminUsers[r.user_id].rating=r; });
 
   const rows=Object.values(adminUsers).map(u=>{
@@ -1736,19 +1750,20 @@ async function renderAdmin(){
   <div class="panel scroll-x">
     <h3>User rankings <span class="tag">by net P&L</span></h3>
     <div class="rtable"><table>
-      <thead><tr><th>Rank</th><th>User</th><th>Last seen</th><th>Visits</th><th>Trades</th><th>Win %</th><th>Net P&L</th><th>Best setup</th><th>Rating</th><th>Status</th><th></th></tr></thead>
-      <tbody>${rows.map((r,i)=>`<tr>
+      <thead><tr><th>Rank</th><th>User</th><th>Last seen</th><th>Visits</th><th>Trades</th><th>Data from</th><th>Win %</th><th>Net P&L</th><th>Best setup</th><th>Rating</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rows.map((r,i)=>`<tr class="row" onclick="adminDetail('${r.u.p.id}')" style="cursor:pointer">
         <td data-label="Rank" style="font-weight:800">${medal(i)}</td>
         <td data-label="User" style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.u.p.email)}">${esc(r.u.p.email||'—')}${r.u.p.is_admin?' <span class="pill setup">ADMIN</span>':''}</td>
         <td data-label="Last seen">${r.u.p.last_seen?new Date(r.u.p.last_seen).toLocaleDateString('en',{month:'short',day:'numeric'}):'—'}</td>
         <td data-label="Visits">${r.u.p.visits||0}</td>
         <td data-label="Trades">${r.n}</td>
+        <td data-label="Data from" style="max-width:150px;white-space:normal;font-size:11px">${sourceSummary(r.u)||'—'}</td>
         <td data-label="Win %">${r.n?r.winRate.toFixed(0)+'%':'—'}</td>
         <td data-label="Net P&L" class="${cls(r.net)}" style="font-weight:800">${signed(r.net,0)}</td>
         <td data-label="Best setup">${r.best?`<span class="pill setup">${esc(r.best[0])}</span>`:'—'}</td>
         <td data-label="Rating">${r.u.rating?'⭐'.repeat(r.u.rating.stars):'—'}</td>
         <td data-label="Status">${r.u.p.is_blocked?'<span class="pill sell">BLOCKED</span>':'<span class="pill buy">ACTIVE</span>'}</td>
-        <td data-label="Manage" style="white-space:nowrap;text-align:right">
+        <td data-label="Manage" style="white-space:nowrap;text-align:right" onclick="event.stopPropagation()">
           <button class="btn ghost" style="padding:5px 9px" title="Details" onclick="adminDetail('${r.u.p.id}')">👁</button>
           ${r.u.p.is_admin?'':`
           <button class="btn ${r.u.p.is_blocked?'dep':'wd'}" style="padding:5px 9px" onclick="adminSetBlocked('${r.u.p.id}',${!r.u.p.is_blocked})">${r.u.p.is_blocked?'Unblock':'Block'}</button>
@@ -1764,23 +1779,54 @@ function adminDetail(id){
   const wins=u.trades.filter(t=>+t.profit>0), losses=u.trades.filter(t=>+t.profit<0);
   const gw=wins.reduce((a,t)=>a+ +t.profit,0), gl=Math.abs(losses.reduce((a,t)=>a+ +t.profit,0));
   const net=u.trades.reduce((a,t)=>a+ +t.profit,0);
+  const deps=u.txs.filter(t=>+t.amount>0).reduce((a,t)=>a+ +t.amount,0);
+  const wds=Math.abs(u.txs.filter(t=>+t.amount<0).reduce((a,t)=>a+ +t.amount,0));
+  const balance=deps-wds+net;
   const bySetup={};
-  u.trades.forEach(t=>{ if(t.setup){ bySetup[t.setup]=bySetup[t.setup]||{net:0,n:0}; bySetup[t.setup].net+= +t.profit; bySetup[t.setup].n++; }});
+  u.trades.forEach(t=>{ if(t.setup){ bySetup[t.setup]=bySetup[t.setup]||{net:0,n:0,w:0}; bySetup[t.setup].net+= +t.profit; bySetup[t.setup].n++; if(+t.profit>0)bySetup[t.setup].w++; }});
   const setups=Object.entries(bySetup).sort((a,b)=>b[1].net-a[1].net).slice(0,5);
+  const tradeSrc=sourceCounts(u.trades), txSrc=sourceCounts(u.txs);
   document.getElementById('admin-detail').innerHTML=`
   <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px">
-    <h3>${esc(u.p.email||'User')} — details</h3>
-    <div class="kv" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+    <h3>${esc(u.p.email||'User')} — full details</h3>
+
+    <div class="flabel">Account & money</div>
+    <div class="kv" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+      <div class="item"><div class="k">Deposits</div><div class="v pos">+${money(deps)}</div></div>
+      <div class="item"><div class="k">Withdrawals</div><div class="v neg">−${money(wds)}</div></div>
+      <div class="item"><div class="k">Trading net P&L</div><div class="v ${cls(net)}">${signed(net)}</div></div>
+      <div class="item"><div class="k">Gross profit</div><div class="v pos">+${money(gw)}</div></div>
+      <div class="item"><div class="k">Gross loss</div><div class="v neg">−${money(gl)}</div></div>
+      <div class="item"><div class="k">Balance</div><div class="v ${cls(balance)}">${money(balance)}</div></div>
+    </div>
+
+    <div class="flabel">Performance</div>
+    <div class="kv" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+      <div class="item"><div class="k">Trades</div><div class="v">${u.trades.length} (${wins.length}W / ${losses.length}L)</div></div>
+      <div class="item"><div class="k">Win rate</div><div class="v">${u.trades.length?(wins.length/u.trades.length*100).toFixed(0)+'%':'—'}</div></div>
+      <div class="item"><div class="k">Profit factor</div><div class="v">${gl>0?(gw/gl).toFixed(2):(gw>0?'∞':'—')}</div></div>
+      <div class="item"><div class="k">Avg win</div><div class="v pos">${wins.length?money(gw/wins.length):'—'}</div></div>
+      <div class="item"><div class="k">Avg loss</div><div class="v neg">${losses.length?'−'+money(gl/losses.length):'—'}</div></div>
+      <div class="item"><div class="k">Best setup</div><div class="v">${setups.length?esc(setups[0][0]):'—'}</div></div>
+    </div>
+
+    <div class="flabel">Where their data comes from</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+      ${tradeSrc.length?tradeSrc.map(([k,n])=>`<span class="chip">${SOURCE_LABELS[k]||k}: <b>${n} trade${n!==1?'s':''}</b></span>`).join(''):'<span class="chip">No trades yet</span>'}
+      ${txSrc.map(([k,n])=>`<span class="chip">${SOURCE_LABELS[k]||k}: <b>${n} deposit/withdrawal${n!==1?'s':''}</b></span>`).join('')}
+    </div>
+    ${u.trades.some(t=>t.source==='sample')?'<div style="color:var(--gold);font-size:12px;margin-bottom:6px">⚠ This user has sample data — their P&L includes fake trades.</div>':''}
+    ${u.trades.some(t=>t.source==='pdf'||t.source==='mt5-report')?'<div style="color:var(--green);font-size:12px;margin-bottom:6px">✓ Uses real broker statements (Exness/MT5).</div>':''}
+
+    <div class="flabel">Usage</div>
+    <div class="kv" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
       <div class="item"><div class="k">Joined</div><div class="v">${u.p.created_at?new Date(u.p.created_at).toLocaleDateString():'—'}</div></div>
       <div class="item"><div class="k">Last seen</div><div class="v">${u.p.last_seen?new Date(u.p.last_seen).toLocaleString():'—'}</div></div>
       <div class="item"><div class="k">Visits</div><div class="v">${u.p.visits||0}</div></div>
-      <div class="item"><div class="k">Trades</div><div class="v">${u.trades.length}</div></div>
-      <div class="item"><div class="k">Net P&L</div><div class="v ${cls(net)}">${signed(net)}</div></div>
-      <div class="item"><div class="k">Win rate</div><div class="v">${u.trades.length?(wins.length/u.trades.length*100).toFixed(0)+'%':'—'}</div></div>
-      <div class="item"><div class="k">Profit factor</div><div class="v">${gl>0?(gw/gl).toFixed(2):(gw>0?'∞':'—')}</div></div>
       <div class="item"><div class="k">Rating</div><div class="v">${u.rating?'⭐'.repeat(u.rating.stars):'not rated'}</div></div>
     </div>
-    ${setups.length?`<div class="flabel">Top setups</div>${setups.map(([n,s])=>`<div class="bar-row"><div class="name" title="${esc(n)}">${esc(n)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(6,Math.abs(s.net)/Math.max(...setups.map(x=>Math.abs(x[1].net)),1)*100)}%;background:${s.net>=0?'var(--green)':'var(--red)'}"></div></div><div class="val ${cls(s.net)}">${signed(s.net,0)}</div></div>`).join('')}`:''}
+
+    ${setups.length?`<div class="flabel">Top setups</div>${setups.map(([n,st])=>`<div class="bar-row"><div class="name" title="${esc(n)}">${esc(n)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(6,Math.abs(st.net)/Math.max(...setups.map(x=>Math.abs(x[1].net)),1)*100)}%;background:${st.net>=0?'var(--green)':'var(--red)'}"></div></div><div class="val ${cls(st.net)}">${signed(st.net,0)} · ${st.n}t · ${(st.w/st.n*100).toFixed(0)}%</div></div>`).join('')}`:''}
     ${u.rating&&u.rating.feedback?`<div class="flabel">Feedback</div><div class="pb-review"><div class="item"><div class="v">"${esc(u.rating.feedback)}"</div></div></div>`:''}
   </div>`;
   document.getElementById('admin-detail').scrollIntoView({behavior:'smooth',block:'nearest'});

@@ -434,8 +434,8 @@
 
 <!-- TRANSACTIONS MODAL -->
 <div class="modal" id="modal-tx">
-  <div class="modal-card">
-    <h2>Balance — deposits & withdrawals <button class="x" onclick="document.getElementById('modal-tx').classList.remove('on')">✕</button></h2>
+  <div class="modal-card" style="max-width:720px">
+    <h2>Account history <button class="x" onclick="document.getElementById('modal-tx').classList.remove('on')">✕</button></h2>
     <div id="tx-list" class="scroll-x"></div>
     <div class="pb-q" style="margin-top:16px;font-size:14px" id="tx-form-title">Add a transaction</div>
     <div class="form-grid">
@@ -1326,20 +1326,40 @@ function resetTxForm(){
 }
 function renderTxList(){
   const el=document.getElementById('tx-list');
+  // Unified ledger: deposits, withdrawals and trade P&L in one timeline
+  const events=[
+    ...txs.map(t=>({kind:t.amount>=0?'dep':'wd', time:t.time, label:t.label, amount:t.amount, id:t.id})),
+    ...trades.map(t=>({kind:'trade', time:t.closeTime, label:t.symbol+' '+t.side, amount:t.profit, tradeId:t.id}))
+  ].sort((a,b)=>new Date(a.time)-new Date(b.time));
+  if(!events.length){ el.innerHTML='<div class="empty" style="padding:14px">No activity yet — add your first deposit below.</div>'; return; }
+  let run=0;
+  events.forEach(e=>{ run+=e.amount; e.bal=run; });
   const txSum=txs.reduce((a,t)=>a+t.amount,0);
-  if(!txs.length){ el.innerHTML='<div class="empty" style="padding:14px">No deposits or withdrawals yet — add your first below.</div>'; return; }
-  el.innerHTML=`<table>
-    <tr><th>Date</th><th>Type</th><th>Note</th><th>Amount</th><th></th></tr>
-    ${[...txs].reverse().map(t=>`<tr>
-      <td>${new Date(t.time).toLocaleDateString()}</td>
-      <td>${t.amount>=0?'<span class="pill buy">DEPOSIT</span>':'<span class="pill sell">WITHDRAWAL</span>'}</td>
-      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis" title="${esc(t.label)}">${esc(t.label)||'—'}</td>
-      <td class="${cls(t.amount)}" style="font-weight:800">${signed(t.amount)}</td>
-      <td style="white-space:nowrap">
-        <button class="btn ghost" style="padding:5px 9px" onclick="editTxFn('${t.id}')">✏</button>
-        <button class="btn danger" style="padding:5px 9px" onclick="delTx('${t.id}')">✕</button></td>
+  const pnl=trades.reduce((a,t)=>a+t.profit,0);
+  el.innerHTML=`
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:12px">
+    <span class="chip">Deposits − withdrawals: <b class="${cls(txSum)}">${signed(txSum)}</b></span>
+    <span class="chip">Trading P&L: <b class="${cls(pnl)}">${signed(pnl)}</b></span>
+    <span class="chip">Balance: <b class="${cls(run)}">${money(run)}</b></span>
+  </div>
+  <table>
+    <tr><th>Date</th><th>Event</th><th>Amount</th><th>Balance</th><th></th></tr>
+    ${[...events].reverse().map(e=>`<tr>
+      <td style="white-space:nowrap">${new Date(e.time).toLocaleDateString('en',{month:'short',day:'numeric'})}</td>
+      <td style="white-space:nowrap">${
+        e.kind==='dep'?'<span class="pill buy">💰 DEPOSIT</span>':
+        e.kind==='wd'?'<span class="pill sell">📤 WITHDRAWAL</span>':
+        `<span class="pill ${e.amount>=0?'buy':'sell'}" style="background:rgba(108,92,231,.14);color:var(--accent2)">📈 ${esc(e.label)}</span>`
+      }${e.kind!=='trade'&&e.label?` <span style="color:var(--muted);font-size:11px">${esc(e.label)}</span>`:''}</td>
+      <td class="${cls(e.amount)}" style="font-weight:800;white-space:nowrap">${signed(e.amount)}</td>
+      <td style="font-weight:700;white-space:nowrap;color:${e.bal>=0?'var(--text)':'var(--red)'}">${money(e.bal)}</td>
+      <td style="white-space:nowrap;text-align:right">${
+        e.kind==='trade'
+        ?`<button class="btn ghost" style="padding:5px 9px" title="Open trade" onclick="document.getElementById('modal-tx').classList.remove('on');openDetail('${esc(e.tradeId).replace(/'/g,"\\'")}')">→</button>`
+        :`<button class="btn ghost" style="padding:5px 9px" onclick="editTxFn('${e.id}')">✏</button>
+           <button class="btn danger" style="padding:5px 9px" onclick="delTx('${e.id}')">✕</button>`
+      }</td>
     </tr>`).join('')}
-    <tr><td colspan="3" style="font-weight:700">Net deposits</td><td class="${cls(txSum)}" style="font-weight:800">${signed(txSum)}</td><td></td></tr>
   </table>`;
 }
 function openTxModal(presetType){

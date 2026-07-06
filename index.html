@@ -372,7 +372,7 @@
 <!-- ADD TRADE MODAL -->
 <div class="modal" id="modal-trade">
   <div class="modal-card">
-    <h2>Add a trade <button class="x" onclick="document.getElementById('modal-trade').classList.remove('on')">✕</button></h2>
+    <h2><span id="mt-title">Add a trade</span> <button class="x" onclick="document.getElementById('modal-trade').classList.remove('on')">✕</button></h2>
     <div class="form-grid">
       <div><div class="flabel" style="margin-top:0">Symbol *</div><input type="text" id="mt-symbol" list="symbol-dl" placeholder="Choose or type…"><datalist id="symbol-dl"></datalist></div>
       <div><div class="flabel" style="margin-top:0">Side</div>
@@ -395,6 +395,10 @@
         <input type="text" id="mt-setup-new" placeholder="Name your new setup…" style="display:none;margin-top:8px"></div>
       <div class="full"><div class="flabel" style="margin-top:0">Pre-trade notes</div><textarea id="mt-pre" style="min-height:60px" placeholder="Why did you enter?"></textarea></div>
       <div class="full"><div class="flabel" style="margin-top:0">Post-trade review</div><textarea id="mt-post" style="min-height:60px" placeholder="What did you learn?"></textarea></div>
+      <div class="full"><div class="flabel" style="margin-top:0">Screenshots (optional)</div>
+        <button class="btn ghost" type="button" onclick="document.getElementById('mt-shots').click()">📷 Choose images</button>
+        <span id="mt-shots-count" style="color:var(--muted);font-size:12px;margin-left:8px"></span>
+        <input type="file" id="mt-shots" accept="image/*" multiple style="display:none" onchange="document.getElementById('mt-shots-count').textContent=this.files.length?this.files.length+' selected':''"></div>
     </div>
     <div class="modal-foot">
       <button class="btn ghost" onclick="document.getElementById('modal-trade').classList.remove('on')">Cancel</button>
@@ -515,7 +519,8 @@ async function loadTrades(){
   txs = r2.error ? [] : (r2.data||[]).map(r=>({time:r.time,label:r.label||'',amount:+r.amount}));
   const r3=await sb.from('playbooks').select('*').order('created_at',{ascending:true});
   playbooks = r3.error ? [] : (r3.data||[]);
-  show('dashboard');
+  show(loadTrades._view||'dashboard');
+  loadTrades._view=null;
 }
 
 function txKey(t){ return [t.time,t.label,t.amount].join('|'); }
@@ -957,10 +962,13 @@ function renderCalPage(){
   const worst=Object.entries(daysP).sort((a,b)=>a[1].p-b[1].p)[0];
 
   let dayDetail='';
-  if(selDay&&daysP[selDay]){
+  if(selDay){
     const dstr=calPageMonth+'-'+String(selDay).padStart(2,'0');
     const dayTrades=trades.filter(t=>t.closeTime.slice(0,10)===dstr).reverse();
-    dayDetail=`<div class="panel scroll-x" style="margin-top:14px"><h3>${new Date(Y,M-1,selDay).toLocaleDateString('en',{weekday:'long',month:'long',day:'numeric'})} · <span class="${cls(daysP[selDay].p)}">${signed(daysP[selDay].p)}</span></h3>${tradesTable(dayTrades)}</div>`;
+    const dName=new Date(Y,M-1,selDay).toLocaleDateString('en',{weekday:'long',month:'long',day:'numeric'});
+    dayDetail=`<div class="panel scroll-x" id="day-detail" style="margin-top:14px">
+      <h3>${dName} ${daysP[selDay]?`· <span class="${cls(daysP[selDay].p)}">${signed(daysP[selDay].p)}</span> · ${daysP[selDay].n} trade${daysP[selDay].n>1?'s':''}`:''}</h3>
+      ${dayTrades.length?tradesTable(dayTrades):'<div class="empty" style="padding:20px">No trades on this day</div>'}</div>`;
   }
 
   el.innerHTML=`
@@ -981,6 +989,10 @@ function renderCalPage(){
     <div class="cal-big-wrap"><div class="cal">${cells}</div><div class="wk">${wkHtml}</div></div>
   </div>
   ${dayDetail}`;
+  if(selDay){
+    const p=document.getElementById('day-detail');
+    if(p) setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+  }
 }
 
 /* ================= JOURNAL ================= */
@@ -1027,7 +1039,10 @@ function renderDetail(){
     <div><h1><span class="sym">${esc(t.symbol)}</span> <span class="pill ${t.side==='BUY'?'buy':'sell'}" style="vertical-align:middle">${t.side}</span>
       <span class="${cls(t.profit)}" style="font-size:20px">${signed(t.profit)}</span></h1>
       <div class="sub">${new Date(t.openTime).toLocaleString()} → ${new Date(t.closeTime).toLocaleString()}</div></div>
-    <div><button class="btn" onclick="saveJournal()">Save journal</button><span class="save-note" id="save-note">✓ Saved</span></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn ghost" onclick="editTrade()">✏ Edit</button>
+      <button class="btn danger" onclick="deleteTrade()">Delete</button>
+      <button class="btn" onclick="saveJournal()">Save journal</button><span class="save-note" id="save-note">✓ Saved</span></div>
   </div>
   <div class="detail-grid">
     <div class="panel">
@@ -1144,7 +1159,9 @@ async function removeShot(i){
 
 /* ================= MANUAL TRADE ================= */
 const COMMON_SYMBOLS=['XAUUSD','EURUSD','GBPUSD','USDJPY','GBPJPY','AUDUSD','USDCAD','USDCHF','NZDUSD','EURJPY','BTCUSD','ETHUSD','US30','NAS100','SPX500','USOIL'];
-function openTradeModal(){
+let editingTrade=null; // dbId when editing
+function toLocalDT(iso){ const d=new Date(iso); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16); }
+function openTradeModal(editT){
   // Symbols: ones you've traded first, then common ones
   const used=[...new Set(trades.map(t=>t.symbol))];
   const syms=[...used, ...COMMON_SYMBOLS.filter(s=>!used.includes(s))];
@@ -1161,10 +1178,29 @@ function openTradeModal(){
   const emoSel=document.getElementById('mt-emotion');
   emoSel.innerHTML='<option value="">—</option>'+EMOTIONS.map(([e,n])=>`<option value="${e}">${e} ${n}</option>`).join('');
   ['mt-symbol','mt-lots','mt-profit','mt-entry','mt-exit','mt-sl','mt-tp','mt-setup-new','mt-pre','mt-post'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('mt-shots').value='';
+  document.getElementById('mt-shots-count').textContent='';
   document.getElementById('mt-plsign').value='1';
-  const now=new Date(); now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
-  document.getElementById('mt-open').value=now.toISOString().slice(0,16);
-  document.getElementById('mt-close').value=now.toISOString().slice(0,16);
+  editingTrade=editT?editT.dbId:null;
+  document.getElementById('mt-title').textContent=editT?'Edit trade':'Add a trade';
+  if(editT){
+    document.getElementById('mt-symbol').value=editT.symbol;
+    document.getElementById('mt-side').value=editT.side;
+    document.getElementById('mt-plsign').value=editT.profit<0?'-1':'1';
+    document.getElementById('mt-profit').value=Math.abs(editT.profit);
+    document.getElementById('mt-open').value=toLocalDT(editT.openTime);
+    document.getElementById('mt-close').value=toLocalDT(editT.closeTime);
+    ['lots','entry','exit','sl','tp'].forEach(k=>{ if(editT[k]!=null) document.getElementById('mt-'+k).value=editT[k]; });
+    document.getElementById('mt-emotion').value=editT.emotion||'';
+    document.getElementById('mt-pre').value=editT.notesPre||'';
+    document.getElementById('mt-post').value=editT.notesPost||'';
+    if(editT.setup&&[...sel.options].some(o=>o.value===editT.setup)) sel.value=editT.setup;
+    else if(editT.setup){ sel.value='__new'; document.getElementById('mt-setup-new').style.display='block'; document.getElementById('mt-setup-new').value=editT.setup; }
+  }else{
+    const now=new Date(); now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
+    document.getElementById('mt-open').value=now.toISOString().slice(0,16);
+    document.getElementById('mt-close').value=now.toISOString().slice(0,16);
+  }
   document.getElementById('modal-trade').classList.add('on');
 }
 async function saveManualTrade(){
@@ -1184,10 +1220,52 @@ async function saveManualTrade(){
     exit:num(g('mt-exit').value), sl:num(g('mt-sl').value), tp:num(g('mt-tp').value),
     commission:0, swap:0, profit, setup, emotion:g('mt-emotion').value,
     notesPre:g('mt-pre').value, notesPost:g('mt-post').value, shots:[]};
-  const added=await importTrades([t]);
-  document.getElementById('modal-trade').classList.remove('on');
-  show('journal');
-  if(!added) alert('That trade already exists — duplicate skipped.');
+  const files=g('mt-shots').files;
+  if(editingTrade){
+    const old=trades.find(x=>x.dbId===editingTrade);
+    t.shots=old?(old.shots||[]):[];
+    t.id=tradeKey(t);
+    const row=toDb(t);
+    const {error}=await sb.from('trades').update(row).eq('id',editingTrade);
+    if(error){ alert(error.message); return; }
+    if(files.length) await uploadShotsTo({dbId:editingTrade, shots:t.shots}, files);
+    document.getElementById('modal-trade').classList.remove('on');
+    editingTrade=null;
+    loadTrades._view='journal'; await loadTrades();
+  }else{
+    const added=await importTrades([t]);
+    if(added&&files.length){
+      const nt=trades.find(x=>x.id===tradeKey(t));
+      if(nt){ await uploadShotsTo(nt, files); }
+    }
+    document.getElementById('modal-trade').classList.remove('on');
+    show('journal');
+    if(!added) alert('That trade already exists — duplicate skipped.');
+  }
+}
+async function uploadShotsTo(t, files){
+  if(!t||!files||!files.length) return;
+  t.shots=t.shots||[];
+  for(const f of [...files]){
+    if(!/^image\//.test(f.type)) continue;
+    const blob=await compress(f);
+    const path=`${user.id}/${t.dbId}/${Date.now()}_${Math.random().toString(36).slice(2,7)}.jpg`;
+    const {error}=await sb.storage.from('screenshots').upload(path, blob, {contentType:'image/jpeg'});
+    if(!error) t.shots.push(path);
+  }
+  await sb.from('trades').update({shots:t.shots}).eq('id',t.dbId);
+}
+function editTrade(){
+  const t=trades.find(x=>x.id===detailId); if(!t) return;
+  openTradeModal(t);
+}
+async function deleteTrade(){
+  const t=trades.find(x=>x.id===detailId); if(!t) return;
+  if(!confirm(`Delete this ${t.symbol} trade${t.shots&&t.shots.length?' and its screenshots':''}? This cannot be undone.`)) return;
+  if(t.shots&&t.shots.length){ try{ await sb.storage.from('screenshots').remove(t.shots); }catch(e){} }
+  const {error}=await sb.from('trades').delete().eq('id',t.dbId);
+  if(error){ alert(error.message); return; }
+  loadTrades._view='journal'; await loadTrades();
 }
 
 /* ================= PLAYBOOK WIZARD ================= */
@@ -1306,11 +1384,13 @@ function renderPlaybook(){
   for(const pb of playbooks){
     const list=trades.filter(t=>t.setup===pb.name);
     const g=computeStats(list);
+    const rulesHtml=`${pb.market?`<b>Market</b>${esc(pb.market)}`:''}${pb.timeframe?`<b>Timeframe & session</b>${esc(pb.timeframe)}`:''}${pb.entry_rules?`<b>Entry rules</b>${esc(pb.entry_rules)}`:''}${pb.exit_rules?`<b>Exit rules</b>${esc(pb.exit_rules)}`:''}${pb.risk_rules?`<b>Risk</b>${esc(pb.risk_rules)}`:''}`;
     html+=`<div class="panel">
       <h3>⚡ ${esc(pb.name)} <span class="tag ${cls(g.net)}" style="font-weight:700">${g.n?signed(g.net,0)+' · '+g.n+' trades':'no trades yet'}</span></h3>
-      <div class="rules">${pb.market?`<b>Market</b>${esc(pb.market)}`:''}${pb.timeframe?`<b>Timeframe & session</b>${esc(pb.timeframe)}`:''}${pb.entry_rules?`<b>Entry rules</b>${esc(pb.entry_rules)}`:''}${pb.exit_rules?`<b>Exit rules</b>${esc(pb.exit_rules)}`:''}${pb.risk_rules?`<b>Risk</b>${esc(pb.risk_rules)}`:''}</div>
       ${pbStatsHtml(list)}
+      ${rulesHtml?`<div class="rules" style="display:none">${rulesHtml}</div>`:''}
       <div class="pb-actions">
+        ${rulesHtml?`<button class="btn ghost" onclick="const r=this.closest('.panel').querySelector('.rules');const on=r.style.display!=='none';r.style.display=on?'none':'block';this.textContent=on?'📋 Details':'📋 Hide details'">📋 Details</button>`:''}
         <button class="btn ghost" onclick="openPbWizard(null,'${pb.id}')">✏ Edit</button>
         <button class="btn danger" onclick="deletePlaybook('${pb.id}')">Delete</button>
       </div>

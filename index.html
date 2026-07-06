@@ -162,10 +162,11 @@
   .save-note{color:var(--green);font-size:12px;font-weight:700;margin-left:10px;opacity:0;transition:opacity .3s}
   .save-note.on{opacity:1}
 
-  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin-top:8px}
-  .thumb{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--border);aspect-ratio:16/10;cursor:pointer;background:var(--panel2)}
-  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
-  .thumb .rm{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.65);border:none;color:#fff;border-radius:6px;width:22px;height:22px;font-size:12px;line-height:1}
+  .thumbs{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
+  .thumb{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);cursor:zoom-in;background:var(--panel2)}
+  .thumb img{width:100%;max-height:340px;object-fit:contain;display:block;background:var(--panel2)}
+  .thumb .rm{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.65);border:none;color:#fff;border-radius:8px;width:26px;height:26px;font-size:13px;line-height:1}
+  .thumb:hover .rm{background:rgba(240,80,110,.85)}
   .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:100;padding:18px;cursor:zoom-out}
   .lightbox.on{display:flex}
   .lightbox img{max-width:100%;max-height:100%;border-radius:10px}
@@ -232,7 +233,7 @@
     .rtable td{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);white-space:normal}
     .rtable tr td:last-child{border-bottom:none}
     .rtable td::before{content:attr(data-label);color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-right:12px}
-    .thumbs{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}
+    .thumb img{max-height:240px}
   }
 </style>
 </head>
@@ -300,7 +301,7 @@
       <div class="topbar">
         <div><h1 id="greet">Welcome 👋</h1><div class="sub" id="range-sub">Import your MT5 statement to get started</div></div>
         <div class="top-right">
-          <div class="chip" id="chip-bal" style="display:none">Balance: <b>—</b></div>
+          <div class="chip" id="chip-bal" style="cursor:pointer" onclick="openTxModal()" title="Manage deposits & withdrawals">Balance: <b>—</b> ✎</div>
           <div class="chip" id="chip-net">Net P&L: <b>—</b></div>
           <div class="avatar" id="avatar">?</div>
         </div>
@@ -403,6 +404,26 @@
     <div class="modal-foot">
       <button class="btn ghost" onclick="document.getElementById('modal-trade').classList.remove('on')">Cancel</button>
       <button class="btn" onclick="saveManualTrade()">Save trade</button>
+    </div>
+  </div>
+</div>
+
+<!-- TRANSACTIONS MODAL -->
+<div class="modal" id="modal-tx">
+  <div class="modal-card">
+    <h2>Balance — deposits & withdrawals <button class="x" onclick="document.getElementById('modal-tx').classList.remove('on')">✕</button></h2>
+    <div id="tx-list" class="scroll-x"></div>
+    <div class="pb-q" style="margin-top:16px;font-size:14px" id="tx-form-title">Add a transaction</div>
+    <div class="form-grid">
+      <div><div class="flabel" style="margin-top:0">Type</div>
+        <select id="tx-type"><option value="1">💰 Deposit</option><option value="-1">📤 Withdrawal</option></select></div>
+      <div><div class="flabel" style="margin-top:0">Amount ($) *</div><input type="number" min="0" step="0.01" id="tx-amount" placeholder="150.00"></div>
+      <div><div class="flabel" style="margin-top:0">Date</div><input type="datetime-local" id="tx-date"></div>
+      <div><div class="flabel" style="margin-top:0">Note</div><input type="text" id="tx-label" placeholder="optional"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="tx-cancel" style="display:none" onclick="resetTxForm()">Cancel edit</button>
+      <button class="btn" onclick="saveTx()">Save</button>
     </div>
   </div>
 </div>
@@ -516,7 +537,7 @@ async function loadTrades(){
   if(error){ alert('Could not load trades: '+error.message); return; }
   trades=(data||[]).map(fromDb);
   const r2=await sb.from('transactions').select('*').order('time',{ascending:true});
-  txs = r2.error ? [] : (r2.data||[]).map(r=>({time:r.time,label:r.label||'',amount:+r.amount}));
+  txs = r2.error ? [] : (r2.data||[]).map(r=>({id:r.id,time:r.time,label:r.label||'',amount:+r.amount}));
   const r3=await sb.from('playbooks').select('*').order('created_at',{ascending:true});
   playbooks = r3.error ? [] : (r3.data||[]);
   show(loadTrades._view||'dashboard');
@@ -845,11 +866,10 @@ function renderDash(){
   // Account balance = deposits/withdrawals + all closed P&L
   const txSum=txs.reduce((a,t)=>a+t.amount,0);
   const balChip=document.getElementById('chip-bal');
-  if(txs.length){
-    const bal=txSum+trades.reduce((a,t)=>a+t.profit,0);
-    balChip.style.display='';
-    balChip.innerHTML=`Balance: <b class="${cls(bal)}">${money(bal)}</b>`;
-  } else balChip.style.display='none';
+  const bal=txSum+trades.reduce((a,t)=>a+t.profit,0);
+  balChip.innerHTML=(txs.length||trades.length)
+    ? `Balance: <b class="${cls(bal)}">${money(bal)}</b> ✎`
+    : 'Balance: <b>set up ✎</b>';
   const hasTrades=trades.length>0;
   const s=computeStats(trades), z=zellaScore(s);
   const from=hasTrades?new Date(trades[0].closeTime).toLocaleDateString():'—';
@@ -1060,9 +1080,9 @@ function renderDetail(){
     </div>
     <div class="panel">
       <h3>Journal</h3>
-      <div class="flabel">Setup / Strategy</div>
-      <input type="text" id="f-setup" list="setup-dl" placeholder="e.g. London Breakout" value="${esc(t.setup)}">
-      <datalist id="setup-dl">${setupList().map(s=>`<option value="${esc(s)}">`).join('')}</datalist>
+      <div class="flabel">Setup / Strategy — from your playbook</div>
+      <select id="f-setup-sel" onchange="document.getElementById('f-setup-new').style.display=this.value==='__new'?'block':'none'">${setupOptionsHtml(t.setup)}</select>
+      <input type="text" id="f-setup-new" placeholder="Name your new setup…" style="display:none;margin-top:8px">
       <div class="flabel">Emotion during trade</div>
       <div class="emo-picker" id="emo-picker">${emoBtns}</div>
       <div class="flabel">Pre-trade notes — why did you enter?</div>
@@ -1086,7 +1106,8 @@ async function setEmo(e){
 }
 async function saveJournal(){
   const t=trades.find(x=>x.id===detailId); if(!t) return;
-  t.setup=document.getElementById('f-setup').value.trim();
+  const selV=document.getElementById('f-setup-sel').value;
+  t.setup=selV==='__new'?document.getElementById('f-setup-new').value.trim():selV;
   t.notesPre=document.getElementById('f-pre').value;
   t.notesPost=document.getElementById('f-post').value;
   const {error}=await sb.from('trades').update({setup:t.setup,notes_pre:t.notesPre,notes_post:t.notesPost}).eq('id',t.dbId);
@@ -1167,13 +1188,8 @@ function openTradeModal(editT){
   const syms=[...used, ...COMMON_SYMBOLS.filter(s=>!used.includes(s))];
   document.getElementById('symbol-dl').innerHTML=syms.map(s=>`<option value="${esc(s)}">`).join('');
   // Setups: playbook names first, then other tags you've used, then "new"
-  const pbNames=playbooks.map(p=>p.name);
-  const otherTags=setupList().filter(s=>!pbNames.includes(s));
   const sel=document.getElementById('mt-setup-sel');
-  sel.innerHTML='<option value="">— no setup —</option>'
-    +(pbNames.length?`<optgroup label="From your playbook">${pbNames.map(s=>`<option value="${esc(s)}">⚡ ${esc(s)}</option>`).join('')}</optgroup>`:'')
-    +(otherTags.length?`<optgroup label="Other tags you've used">${otherTags.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('')}</optgroup>`:'')
-    +'<option value="__new">➕ New setup…</option>';
+  sel.innerHTML=setupOptionsHtml('');
   document.getElementById('mt-setup-new').style.display='none';
   const emoSel=document.getElementById('mt-emotion');
   emoSel.innerHTML='<option value="">—</option>'+EMOTIONS.map(([e,n])=>`<option value="${e}">${e} ${n}</option>`).join('');
@@ -1258,6 +1274,91 @@ async function uploadShotsTo(t, files){
 function editTrade(){
   const t=trades.find(x=>x.id===detailId); if(!t) return;
   openTradeModal(t);
+}
+
+/* ================= TRANSACTIONS (deposits/withdrawals) ================= */
+let editingTx=null;
+function setupOptionsHtml(current){
+  const pbNames=playbooks.map(p=>p.name);
+  const others=setupList().filter(s=>!pbNames.includes(s));
+  const opt=(v,l)=>`<option value="${esc(v)}"${v===current?' selected':''}>${l}</option>`;
+  return '<option value="">— no setup —</option>'
+    +(pbNames.length?'<optgroup label="From your playbook">'+pbNames.map(s=>opt(s,'⚡ '+esc(s))).join('')+'</optgroup>':'')
+    +(others.length?'<optgroup label="Other tags you\'ve used">'+others.map(s=>opt(s,esc(s))).join('')+'</optgroup>':'')
+    +'<option value="__new">➕ New setup…</option>';
+}
+async function reloadTxs(){
+  const r=await sb.from('transactions').select('*').order('time',{ascending:true});
+  txs = r.error ? [] : (r.data||[]).map(x=>({id:x.id,time:x.time,label:x.label||'',amount:+x.amount}));
+}
+function resetTxForm(){
+  editingTx=null;
+  document.getElementById('tx-form-title').textContent='Add a transaction';
+  document.getElementById('tx-cancel').style.display='none';
+  document.getElementById('tx-type').value='1';
+  document.getElementById('tx-amount').value='';
+  document.getElementById('tx-label').value='';
+  document.getElementById('tx-date').value=toLocalDT(new Date().toISOString());
+}
+function renderTxList(){
+  const el=document.getElementById('tx-list');
+  const txSum=txs.reduce((a,t)=>a+t.amount,0);
+  if(!txs.length){ el.innerHTML='<div class="empty" style="padding:14px">No deposits or withdrawals yet — add your first below.</div>'; return; }
+  el.innerHTML=`<table>
+    <tr><th>Date</th><th>Type</th><th>Note</th><th>Amount</th><th></th></tr>
+    ${[...txs].reverse().map(t=>`<tr>
+      <td>${new Date(t.time).toLocaleDateString()}</td>
+      <td>${t.amount>=0?'<span class="pill buy">DEPOSIT</span>':'<span class="pill sell">WITHDRAWAL</span>'}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis" title="${esc(t.label)}">${esc(t.label)||'—'}</td>
+      <td class="${cls(t.amount)}" style="font-weight:800">${signed(t.amount)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn ghost" style="padding:5px 9px" onclick="editTxFn('${t.id}')">✏</button>
+        <button class="btn danger" style="padding:5px 9px" onclick="delTx('${t.id}')">✕</button></td>
+    </tr>`).join('')}
+    <tr><td colspan="3" style="font-weight:700">Net deposits</td><td class="${cls(txSum)}" style="font-weight:800">${signed(txSum)}</td><td></td></tr>
+  </table>`;
+}
+function openTxModal(){
+  resetTxForm();
+  renderTxList();
+  document.getElementById('modal-tx').classList.add('on');
+}
+function editTxFn(id){
+  const t=txs.find(x=>x.id===id); if(!t) return;
+  editingTx=id;
+  document.getElementById('tx-form-title').textContent='Edit transaction';
+  document.getElementById('tx-cancel').style.display='';
+  document.getElementById('tx-type').value=t.amount>=0?'1':'-1';
+  document.getElementById('tx-amount').value=Math.abs(t.amount);
+  document.getElementById('tx-label').value=t.label;
+  document.getElementById('tx-date').value=toLocalDT(t.time);
+}
+async function saveTx(){
+  const sign=+document.getElementById('tx-type').value;
+  const amt=parseNum(document.getElementById('tx-amount').value);
+  const dv=document.getElementById('tx-date').value;
+  if(isNaN(amt)||amt<=0){ alert('Enter a valid amount.'); return; }
+  const time=(dv?new Date(dv):new Date()).toISOString();
+  const label=document.getElementById('tx-label').value.trim();
+  const amount=sign*Math.abs(amt);
+  const key=txKey({time,label,amount});
+  let error;
+  if(editingTx) ({error}=await sb.from('transactions').update({time,label,amount,tx_key:key}).eq('id',editingTx));
+  else ({error}=await sb.from('transactions').insert({user_id:user.id,tx_key:key,time,label,amount}));
+  if(error){ alert(error.message.includes('duplicate')?'An identical transaction already exists.':error.message); return; }
+  await reloadTxs();
+  resetTxForm();
+  renderTxList();
+  renderDash();
+}
+async function delTx(id){
+  if(!confirm('Delete this transaction?')) return;
+  const {error}=await sb.from('transactions').delete().eq('id',id);
+  if(error){ alert(error.message); return; }
+  txs=txs.filter(t=>t.id!==id);
+  if(editingTx===id) resetTxForm();
+  renderTxList();
+  renderDash();
 }
 async function deleteTrade(){
   const t=trades.find(x=>x.id===detailId); if(!t) return;

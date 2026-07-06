@@ -14,12 +14,30 @@
     --accent:#6c5ce7; --accent2:#8b7cf0; --gold:#f5b955;
   }
   body.light{
-    --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef1f8; --border:#e3e7f0;
-    --text:#232946; --muted:#7a839b; --accent2:#6c5ce7; --gold:#d99a1f;
+    --bg:#f7f8fc; --panel:#ffffff; --panel2:#f2f4fa; --border:#e8eaf3;
+    --text:#191d30; --muted:#69708a; --green:#0e9f6e; --red:#e02d52;
+    --accent:#6c5ce7; --accent2:#5b4bd5; --gold:#b07d10;
   }
-  body.light .card,body.light .panel,body.light .auth-card{box-shadow:0 1px 3px rgba(35,41,70,.07)}
-  body.light .btn-google{border:1px solid #dfe3ec}
-  body.light .sidebar{box-shadow:1px 0 4px rgba(35,41,70,.04)}
+  body.light .card,body.light .panel,body.light .auth-card{box-shadow:0 1px 2px rgba(16,24,40,.04),0 4px 14px rgba(16,24,40,.05)}
+  body.light .btn-google{border:1px solid #e2e5ef;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+  body.light .sidebar{box-shadow:1px 0 6px rgba(16,24,40,.04)}
+  body.light .nav-item.active{background:linear-gradient(90deg,rgba(108,92,231,.13),rgba(108,92,231,.04))}
+  body.light .sync-box{background:#f7f8fd}
+  body.light .btn.ghost{background:#fff}
+  body.light .chip{box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  body.light .cal .day{background:#fafbfe}
+  body.light .cal .day.win{background:rgba(14,159,110,.1);border-color:rgba(14,159,110,.35)}
+  body.light .cal .day.loss{background:rgba(224,45,82,.08);border-color:rgba(224,45,82,.32)}
+  body.light .pill.buy{background:rgba(14,159,110,.12)}
+  body.light .pill.sell{background:rgba(224,45,82,.1)}
+  body.light .pill.setup{background:rgba(108,92,231,.12)}
+  body.light .drop{background:rgba(108,92,231,.05);border-color:rgba(108,92,231,.35)}
+  body.light .drop:hover,body.light .drop.over{background:rgba(108,92,231,.1)}
+  body.light .m-head .icon-btn{background:#fff;box-shadow:0 2px 8px rgba(16,24,40,.12)}
+  body.light .btn.dep{background:linear-gradient(135deg,rgba(14,159,110,.14),rgba(14,159,110,.06));border-color:rgba(14,159,110,.4)}
+  body.light .btn.wd{background:linear-gradient(135deg,rgba(224,45,82,.11),rgba(224,45,82,.04));border-color:rgba(224,45,82,.35)}
+  body.light .bar-track{background:#eceef6}
+  body.light .kv .item,body.light .wk .w{background:#f7f8fd}
   body{transition:background .2s}
   *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
   body{background:var(--bg);color:var(--text);min-height:100vh}
@@ -843,7 +861,7 @@ function equityCurve(series){
   const y=v=>12+(H-36)*(1-(v-min)/(max-min||1));
   const line=series.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
   const area=line+` L${x(series.length-1).toFixed(1)},${y(0)} L${x(0).toFixed(1)},${y(0)} Z`;
-  const col=series[series.length-1].v>=0?'#22c47a':'#f0506e';
+  const col=series[series.length-1].v>=0?(cssVar('--green')||'#22c47a'):(cssVar('--red')||'#f0506e');
   const gridCol=cssVar('--border')||'#242c3d', lblCol=cssVar('--muted')||'#8b95a8';
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="225">
     <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${col}" stop-opacity=".35"/><stop offset="100%" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>

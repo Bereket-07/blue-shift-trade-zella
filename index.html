@@ -72,6 +72,10 @@
   .btn{background:var(--accent);border:none;color:#fff;padding:9px 18px;border-radius:9px;font-weight:600;font-size:13px}
   .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
   .btn.danger{background:rgba(240,80,110,.15);border:none;color:var(--red)}
+  .btn.dep{background:linear-gradient(135deg,rgba(34,196,122,.22),rgba(34,196,122,.1));border:1px solid rgba(34,196,122,.45);color:var(--green)}
+  .btn.dep:hover{background:rgba(34,196,122,.3)}
+  .btn.wd{background:linear-gradient(135deg,rgba(240,80,110,.2),rgba(240,80,110,.08));border:1px solid rgba(240,80,110,.45);color:var(--red)}
+  .btn.wd:hover{background:rgba(240,80,110,.28)}
   .btn:disabled{opacity:.4;cursor:default}
 
   .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:18px}
@@ -301,7 +305,9 @@
       <div class="topbar">
         <div><h1 id="greet">Welcome 👋</h1><div class="sub" id="range-sub">Import your MT5 statement to get started</div></div>
         <div class="top-right">
-          <div class="chip" id="chip-bal" style="cursor:pointer" onclick="openTxModal()" title="Manage deposits & withdrawals">Balance: <b>—</b> ✎</div>
+          <div class="chip" id="chip-bal" style="cursor:pointer" onclick="openTxModal()" title="Manage deposits & withdrawals">Balance: <b>—</b></div>
+          <button class="btn dep" onclick="openTxModal('1')">💰 Deposit</button>
+          <button class="btn wd" onclick="openTxModal('-1')">📤 Withdraw</button>
           <div class="chip" id="chip-net">Net P&L: <b>—</b></div>
           <div class="avatar" id="avatar">?</div>
         </div>
@@ -1318,10 +1324,15 @@ function renderTxList(){
     <tr><td colspan="3" style="font-weight:700">Net deposits</td><td class="${cls(txSum)}" style="font-weight:800">${signed(txSum)}</td><td></td></tr>
   </table>`;
 }
-function openTxModal(){
+function openTxModal(presetType){
   resetTxForm();
+  if(presetType){
+    document.getElementById('tx-type').value=presetType;
+    document.getElementById('tx-form-title').textContent=presetType==='1'?'Add a deposit':'Add a withdrawal';
+  }
   renderTxList();
   document.getElementById('modal-tx').classList.add('on');
+  if(presetType) document.getElementById('tx-amount').focus();
 }
 function editTxFn(id){
   const t=txs.find(x=>x.id===id); if(!t) return;

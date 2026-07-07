@@ -261,6 +261,57 @@ create policy "admin delete any ratings" on public.ratings
 alter table public.trades add column if not exists source text default '';
 alter table public.transactions add column if not exists source text default '';
 
+-- ============================================================
+-- 8. MULTIPLE TRADING ACCOUNTS
+-- ============================================================
+create table if not exists public.accounts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  created_at timestamptz default now(),
+  unique (user_id, name)
+);
+alter table public.accounts enable row level security;
+
+drop policy if exists "select own accounts" on public.accounts;
+create policy "select own accounts" on public.accounts
+  for select using (auth.uid() = user_id or public.is_admin(auth.uid()));
+drop policy if exists "insert own accounts" on public.accounts;
+create policy "insert own accounts" on public.accounts
+  for insert with check (auth.uid() = user_id);
+drop policy if exists "update own accounts" on public.accounts;
+create policy "update own accounts" on public.accounts
+  for update using (auth.uid() = user_id);
+drop policy if exists "delete own accounts" on public.accounts;
+create policy "delete own accounts" on public.accounts
+  for delete using (auth.uid() = user_id);
+
+-- link trades & transactions to an account
+alter table public.trades add column if not exists account_id uuid references public.accounts(id) on delete cascade;
+alter table public.transactions add column if not exists account_id uuid references public.accounts(id) on delete cascade;
+
+-- give every existing user a "Main account" and attach their old data to it
+insert into public.accounts (user_id, name)
+select distinct user_id, 'Main account' from public.trades
+on conflict (user_id, name) do nothing;
+insert into public.accounts (user_id, name)
+select distinct user_id, 'Main account' from public.transactions
+on conflict (user_id, name) do nothing;
+update public.trades t set account_id = a.id
+  from public.accounts a
+  where t.account_id is null and a.user_id = t.user_id and a.name = 'Main account';
+update public.transactions t set account_id = a.id
+  from public.accounts a
+  where t.account_id is null and a.user_id = t.user_id and a.name = 'Main account';
+
+-- duplicates are now checked per account (same statement can go to two accounts)
+alter table public.trades drop constraint if exists trades_user_id_trade_key_key;
+alter table public.trades drop constraint if exists trades_user_account_key;
+alter table public.trades add constraint trades_user_account_key unique (user_id, account_id, trade_key);
+alter table public.transactions drop constraint if exists transactions_user_id_tx_key_key;
+alter table public.transactions drop constraint if exists tx_user_account_key;
+alter table public.transactions add constraint tx_user_account_key unique (user_id, account_id, tx_key);
+
 -- 7. MAKE YOURSELF ADMIN (edit the email, run after logging in once)
 -- ============================================================
 update public.profiles set is_admin = true

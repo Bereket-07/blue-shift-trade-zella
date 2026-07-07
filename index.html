@@ -252,6 +252,9 @@
   .g-drop{animation:gdrop 1.8s ease-out infinite}
   @media(max-width:900px){.guides{grid-template-columns:1fr}}
 
+  .acct-switch{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:9px 10px;font-size:12.5px;font-weight:600;margin:0 0 12px;font-family:inherit;cursor:pointer}
+  .sidebar .acct-switch{width:calc(100% - 0px)}
+
   /* mobile header */
   .m-head{display:none}
   .icon-btn{background:var(--panel2);border:1px solid var(--border);border-radius:10px;width:38px;height:38px;color:var(--text);font-size:16px;display:flex;align-items:center;justify-content:center}
@@ -319,6 +322,7 @@
 <!-- APP -->
 <div class="app" id="app">
   <div class="m-head">
+    <select class="acct-switch" onchange="switchAccount(this.value)" style="max-width:130px;padding:8px 10px;font-size:12px" title="Trading account"></select>
     <button class="icon-btn" onclick="openRateModal()" title="Rate ZellaBek">⭐</button>
     <button class="icon-btn" onclick="toggleTheme()" title="Theme"><span class="theme-ic">☀️</span></button>
     <button class="icon-btn" onclick="signOut()" title="Sign out">
@@ -327,6 +331,7 @@
   </div>
   <div class="sidebar">
     <div class="logo">Zella<span>Bek</span></div>
+    <select class="acct-switch" onchange="switchAccount(this.value)" title="Trading account"></select>
     <div class="nav-item active" data-v="dashboard" onclick="show('dashboard')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
       Dashboard</div>
@@ -405,6 +410,8 @@
         <div class="top-right">
           <button class="btn dep" onclick="openTxModal('1')">💰 Deposit</button>
           <button class="btn wd" onclick="openTxModal('-1')">📤 Withdraw</button>
+          <button class="btn ghost" onclick="renameAccount()">✏ Rename</button>
+          <button class="btn danger" onclick="deleteAccount()">🗑 Delete account</button>
         </div>
       </div>
       <div class="panel scroll-x" id="account-body"></div>
@@ -556,7 +563,7 @@ const SUPABASE_URL = 'https://gwiwyvaznhmjggsrtstl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_QER1M-e9IeezCYrkK7mMLg_-qkrYmDS';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let user = null, trades = [], txs = [], playbooks = [], authMode = 'signin', isAdmin = false;
+let user = null, trades = [], txs = [], playbooks = [], accounts = [], currentAccount = null, authMode = 'signin', isAdmin = false;
 let calMonth = null, calPageMonth = null, selDay = null, detailId = null;
 const urlCache = {};
 const EMOTIONS = [['😌','Calm'],['🙂','Confident'],['😐','Neutral'],['😤','Frustrated'],['😰','Anxious'],['😡','Tilted']];
@@ -612,7 +619,7 @@ async function googleLogin(){
   const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});
   if(error) authMsg(error.message);
 }
-async function signOut(){ await sb.auth.signOut(); trades=[]; }
+async function signOut(){ await sb.auth.signOut(); trades=[]; txs=[]; accounts=[]; currentAccount=null; }
 
 function setUser(u){
   const changed = (u&&u.id)!==(user&&user.id);
@@ -660,16 +667,80 @@ function fromDb(r){ return {dbId:r.id, id:r.trade_key, openTime:r.open_time, clo
   exit:r.exit===null?null:+r.exit, sl:r.sl===null?null:+r.sl, tp:r.tp===null?null:+r.tp,
   commission:+(r.commission||0), swap:+(r.swap||0), profit:+r.profit,
   setup:r.setup||'', emotion:r.emotion||'', notesPre:r.notes_pre||'', notesPost:r.notes_post||'', shots:r.shots||[], source:r.source||''}; }
-function toDb(t){ return {user_id:user.id, trade_key:t.id, open_time:t.openTime, close_time:t.closeTime,
+function toDb(t){ const row={user_id:user.id, trade_key:t.id, open_time:t.openTime, close_time:t.closeTime,
   symbol:t.symbol, side:t.side, lots:t.lots, entry:t.entry, exit:t.exit, sl:t.sl, tp:t.tp,
   commission:t.commission||0, swap:t.swap||0, profit:t.profit,
-  setup:t.setup||'', emotion:t.emotion||'', notes_pre:t.notesPre||'', notes_post:t.notesPost||'', shots:t.shots||[], source:t.source||''}; }
+  setup:t.setup||'', emotion:t.emotion||'', notes_pre:t.notesPre||'', notes_post:t.notesPost||'', shots:t.shots||[], source:t.source||''};
+  if(currentAccount) row.account_id=currentAccount;
+  return row; }
 
+function acctScope(q){ return currentAccount ? q.eq('account_id',currentAccount) : q; }
+async function ensureAccounts(){
+  try{
+    const r=await sb.from('accounts').select('*').eq('user_id',user.id).order('created_at',{ascending:true});
+    if(r.error){ accounts=[]; currentAccount=null; renderAcctSwitch(); return; }
+    accounts=r.data||[];
+    if(!accounts.length){
+      const ins=await sb.from('accounts').insert({user_id:user.id,name:'Main account'}).select().maybeSingle();
+      if(ins.data) accounts=[ins.data];
+    }
+    let saved=null; try{ saved=localStorage.getItem('zb_acct_'+user.id); }catch(e){}
+    currentAccount=(accounts.find(a=>a.id===saved)||accounts[0]||{}).id||null;
+  }catch(e){ accounts=[]; currentAccount=null; }
+  renderAcctSwitch();
+}
+function renderAcctSwitch(){
+  const opts=accounts.map(a=>`<option value="${a.id}" ${a.id===currentAccount?'selected':''}>💼 ${esc(a.name)}</option>`).join('')
+    +'<option value="__new">＋ New account…</option>';
+  document.querySelectorAll('.acct-switch').forEach(sel=>{
+    sel.innerHTML=accounts.length?opts:'<option>💼 Main account</option>';
+    sel.style.display=accounts.length?'':'none';
+  });
+}
+async function switchAccount(v){
+  if(v==='__new'){
+    const name=(prompt('Name for the new account (e.g. "Exness $1000"):')||'').trim();
+    renderAcctSwitch();
+    if(!name) return;
+    const {data,error}=await sb.from('accounts').insert({user_id:user.id,name}).select().maybeSingle();
+    if(error){ alert(error.message.includes('duplicate')?'You already have an account with that name.':error.message); return; }
+    accounts.push(data); v=data.id;
+  }
+  currentAccount=v;
+  try{ localStorage.setItem('zb_acct_'+user.id, v); }catch(e){}
+  renderAcctSwitch();
+  const act=document.querySelector('.views.active');
+  loadTrades._view=act&&act.id!=='view-detail'?act.id.replace('view-',''):'dashboard';
+  await loadTrades();
+}
+async function renameAccount(){
+  const a=accounts.find(x=>x.id===currentAccount); if(!a) return;
+  const name=(prompt('New name for this account:',a.name)||'').trim();
+  if(!name||name===a.name) return;
+  const {error}=await sb.from('accounts').update({name}).eq('id',a.id);
+  if(error){ alert(error.message); return; }
+  a.name=name; renderAcctSwitch();
+}
+async function deleteAccount(){
+  const a=accounts.find(x=>x.id===currentAccount); if(!a) return;
+  if(accounts.length<=1){ alert('You need at least one account. Create another one first.'); return; }
+  if(!confirm(`Delete account "${a.name}" and ALL its trades, deposits and withdrawals? This cannot be undone.`)) return;
+  const paths=trades.flatMap(t=>t.shots||[]);
+  if(paths.length){ try{ await sb.storage.from('screenshots').remove(paths); }catch(e){} }
+  const {error}=await sb.from('accounts').delete().eq('id',a.id);
+  if(error){ alert(error.message); return; }
+  accounts=accounts.filter(x=>x.id!==a.id);
+  currentAccount=accounts[0].id;
+  try{ localStorage.setItem('zb_acct_'+user.id, currentAccount); }catch(e){}
+  renderAcctSwitch();
+  loadTrades._view='account'; await loadTrades();
+}
 async function loadTrades(){
-  const {data,error}=await sb.from('trades').select('*').eq('user_id',user.id).order('close_time',{ascending:true});
+  if(!accounts.length) await ensureAccounts();
+  const {data,error}=await acctScope(sb.from('trades').select('*').eq('user_id',user.id)).order('close_time',{ascending:true});
   if(error){ alert('Could not load trades: '+error.message); return; }
   trades=(data||[]).map(fromDb);
-  const r2=await sb.from('transactions').select('*').eq('user_id',user.id).order('time',{ascending:true});
+  const r2=await acctScope(sb.from('transactions').select('*').eq('user_id',user.id)).order('time',{ascending:true});
   txs = r2.error ? [] : (r2.data||[]).map(r=>({id:r.id,time:r.time,label:r.label||'',amount:+r.amount}));
   const r3=await sb.from('playbooks').select('*').eq('user_id',user.id).order('created_at',{ascending:true});
   playbooks = r3.error ? [] : (r3.data||[]);
@@ -683,10 +754,12 @@ async function importTxs(list){
   const seen=new Set(); const rows=[];
   for(const t of list){
     const k=txKey(t);
-    if(!seen.has(k)){ seen.add(k); rows.push({user_id:user.id, tx_key:k, time:t.time, label:t.label, amount:t.amount, source:t.source||''}); }
+    if(!seen.has(k)){ seen.add(k); const row={user_id:user.id, tx_key:k, time:t.time, label:t.label, amount:t.amount, source:t.source||''};
+    if(currentAccount) row.account_id=currentAccount;
+    rows.push(row); }
   }
   const {data,error}=await sb.from('transactions')
-    .upsert(rows,{onConflict:'user_id,tx_key',ignoreDuplicates:true})
+    .upsert(rows,{onConflict:currentAccount?'user_id,account_id,tx_key':'user_id,tx_key',ignoreDuplicates:true})
     .select('id');
   if(error) return 0; // table may not exist yet — trades still import fine
   return data?data.length:0;
@@ -698,7 +771,7 @@ async function importTrades(list){
   const seen=new Set(); const rows=[];
   for(const t of list){ if(!seen.has(t.id)){ seen.add(t.id); rows.push(toDb(t)); } }
   const {data,error}=await sb.from('trades')
-    .upsert(rows,{onConflict:'user_id,trade_key',ignoreDuplicates:true})
+    .upsert(rows,{onConflict:currentAccount?'user_id,account_id,trade_key':'user_id,trade_key',ignoreDuplicates:true})
     .select('id');
   if(error){ alert('Import failed: '+error.message); return 0; }
   await loadTrades();
@@ -909,12 +982,13 @@ async function handleFiles(files){
 }
 
 async function clearAll(){
-  if(!confirm('Delete ALL your trades, notes and screenshots? This cannot be undone.')) return;
+  const a=accounts.find(x=>x.id===currentAccount);
+  if(!confirm(`Delete ALL trades, notes and screenshots in ${a?'"'+a.name+'"':'this account'}? This cannot be undone.`)) return;
   const paths=trades.flatMap(t=>t.shots||[]);
   if(paths.length){ try{ await sb.storage.from('screenshots').remove(paths); }catch(e){} }
-  const {error}=await sb.from('trades').delete().eq('user_id',user.id);
+  const {error}=await acctScope(sb.from('trades').delete().eq('user_id',user.id));
   if(error){ alert(error.message); return; }
-  try{ await sb.from('transactions').delete().eq('user_id',user.id); }catch(e){}
+  try{ await acctScope(sb.from('transactions').delete().eq('user_id',user.id)); }catch(e){}
   trades=[]; txs=[]; renderJournal(); renderDash();
 }
 
@@ -1426,7 +1500,7 @@ function setupOptionsHtml(current){
     +'<option value="__new">➕ New setup…</option>';
 }
 async function reloadTxs(){
-  const r=await sb.from('transactions').select('*').eq('user_id',user.id).order('time',{ascending:true});
+  const r=await acctScope(sb.from('transactions').select('*').eq('user_id',user.id)).order('time',{ascending:true});
   txs = r.error ? [] : (r.data||[]).map(x=>({id:x.id,time:x.time,label:x.label||'',amount:+x.amount}));
 }
 function resetTxForm(){
@@ -1514,7 +1588,11 @@ async function saveTx(){
   const key=txKey({time,label,amount});
   let error;
   if(editingTx) ({error}=await sb.from('transactions').update({time,label,amount,tx_key:key}).eq('id',editingTx));
-  else ({error}=await sb.from('transactions').insert({user_id:user.id,tx_key:key,time,label,amount,source:'manual'}));
+  else{
+    const row={user_id:user.id,tx_key:key,time,label,amount,source:'manual'};
+    if(currentAccount) row.account_id=currentAccount;
+    ({error}=await sb.from('transactions').insert(row));
+  }
   if(error){ alert(error.message.includes('duplicate')?'An identical transaction already exists.':error.message); return; }
   await reloadTxs();
   resetTxForm();

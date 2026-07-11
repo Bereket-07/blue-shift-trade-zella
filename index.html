@@ -269,6 +269,15 @@
   .ai-inputbar .send{width:46px;height:46px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:16px}
   .ai-think{color:var(--muted);font-size:12px;padding:6px 2px;font-style:italic}
 
+  /* mobile more-sheet */
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:80;align-items:flex-end}
+  .sheet.on{display:flex}
+  .sheet-card{background:var(--panel);border-top-left-radius:24px;border-top-right-radius:24px;border-top:1px solid var(--border);width:100%;padding:14px 18px calc(22px + env(safe-area-inset-bottom));max-height:78vh;overflow-y:auto}
+  .sheet-grab{width:44px;height:5px;border-radius:3px;background:var(--border);margin:0 auto 14px}
+  .sheet-item{display:flex;align-items:center;gap:13px;padding:14px 10px;border-radius:14px;font-size:15px;font-weight:600;color:var(--text);cursor:pointer}
+  .sheet-item:hover,.sheet-item:active{background:var(--panel2)}
+  .nav-more{display:none}
+
   /* mobile header */
   .m-head{display:none}
   .icon-btn{background:var(--panel2);border:1px solid var(--border);border-radius:10px;width:38px;height:38px;color:var(--text);font-size:16px;display:flex;align-items:center;justify-content:center}
@@ -283,8 +292,12 @@
     .nav-item svg{width:20px;height:20px}
     .m-head{display:flex;position:fixed;top:calc(10px + env(safe-area-inset-top));right:12px;z-index:20;gap:8px}
     .m-head .icon-btn{box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:.92}
+    body{overflow-x:hidden}
+    .sidebar .acct-switch{display:none}
+    .sidebar .nav-item[data-v="playbook"],.sidebar .nav-item[data-v="account"],.sidebar .nav-item[data-v="import"],#nav-admin{display:none!important}
+    .nav-more{display:flex}
     .main{margin-left:0;padding:14px;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
-    .main .topbar{padding-right:96px}
+    .main .topbar{padding-right:56px}
     .form-grid{grid-template-columns:1fr}
     .topbar h1{font-size:18px}
     .topbar .sub{font-size:12px}
@@ -336,12 +349,7 @@
 <!-- APP -->
 <div class="app" id="app">
   <div class="m-head">
-    <select class="acct-switch" onchange="switchAccount(this.value)" style="max-width:130px;padding:8px 10px;font-size:12px" title="Trading account"></select>
-    <button class="icon-btn" onclick="openRateModal()" title="Rate ZellaBek">⭐</button>
     <button class="icon-btn" onclick="toggleTheme()" title="Theme"><span class="theme-ic">☀️</span></button>
-    <button class="icon-btn" onclick="signOut()" title="Sign out">
-      <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
-    </button>
   </div>
   <div class="sidebar">
     <div class="logo">Zella<span>Bek</span></div>
@@ -370,6 +378,9 @@
     <div class="nav-item" id="nav-admin" data-v="admin" style="display:none" onclick="show('admin')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
       Admin</div>
+    <div class="nav-item nav-more" onclick="openMoreSheet()">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+      More</div>
     <div class="sync-box">
       <b><span class="dot"></span><span id="user-email"></span></b>
       <div class="muted" id="sync-info">Loading…</div>
@@ -504,6 +515,22 @@
 </div>
 
 <div class="lightbox" id="lightbox" onclick="this.classList.remove('on')"><img id="lightbox-img" alt=""></div>
+
+<!-- MOBILE MORE SHEET -->
+<div class="sheet" id="more-sheet" onclick="if(event.target===this)this.classList.remove('on')">
+  <div class="sheet-card">
+    <div class="sheet-grab"></div>
+    <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Trading account</div>
+    <select class="acct-switch" onchange="switchAccount(this.value)" style="margin-bottom:14px"></select>
+    <div class="sheet-item" onclick="sheetGo('playbook')">📖 <span>Playbook</span></div>
+    <div class="sheet-item" onclick="sheetGo('account')">💳 <span>Account history</span></div>
+    <div class="sheet-item" onclick="sheetGo('import')">⬆ <span>Import trades</span></div>
+    <div class="sheet-item" id="sheet-admin" style="display:none" onclick="sheetGo('admin')">🛡 <span>Admin</span></div>
+    <div style="height:1px;background:var(--border);margin:8px 0"></div>
+    <div class="sheet-item" onclick="document.getElementById('more-sheet').classList.remove('on');openRateModal()">⭐ <span>Rate ZellaBek</span></div>
+    <div class="sheet-item" onclick="signOut()" style="color:var(--red)">🚪 <span>Sign out</span></div>
+  </div>
+</div>
 
 <!-- ADD TRADE MODAL -->
 <div class="modal" id="modal-trade">
@@ -736,6 +763,8 @@ async function switchAccount(v){
   currentAccount=v;
   try{ localStorage.setItem('zb_acct_'+user.id, v); }catch(e){}
   renderAcctSwitch();
+  const sheetEl=document.getElementById('more-sheet');
+  if(sheetEl) sheetEl.classList.remove('on');
   const act=document.querySelector('.views.active');
   loadTrades._view=act&&act.id!=='view-detail'?act.id.replace('view-',''):'dashboard';
   await loadTrades();
@@ -2006,6 +2035,18 @@ async function analyzeTrade(){
     'Did I follow my rules? Was the risk right? What should I learn? Max 130 words.';
   const reply=await gemini([{role:'user',text:prompt}]);
   box.innerHTML=`<div class="ai-hl" style="margin-top:10px">🤖 ${mdLite(reply)}</div>`;
+}
+
+
+/* ---- mobile more sheet ---- */
+function openMoreSheet(){
+  document.getElementById('sheet-admin').style.display=isAdmin?'':'none';
+  renderAcctSwitch();
+  document.getElementById('more-sheet').classList.add('on');
+}
+function sheetGo(v){
+  document.getElementById('more-sheet').classList.remove('on');
+  show(v);
 }
 
 /* ================= RATINGS ================= */

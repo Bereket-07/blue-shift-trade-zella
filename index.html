@@ -255,6 +255,20 @@
   .acct-switch{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:9px 10px;font-size:12.5px;font-weight:600;margin:0 0 12px;font-family:inherit;cursor:pointer}
   .sidebar .acct-switch{width:calc(100% - 0px)}
 
+  /* Zella AI */
+  .ai-hl{background:linear-gradient(120deg,rgba(108,92,231,.16),rgba(34,196,122,.08));border:1px solid rgba(108,92,231,.4);border-radius:14px;padding:12px 16px;margin-bottom:16px;font-size:13.5px;line-height:1.6}
+  .ai-hl b{color:var(--accent2)}
+  .ai-msg{max-width:85%;padding:11px 14px;border-radius:16px;font-size:13.5px;line-height:1.65;margin-bottom:10px;white-space:pre-wrap;word-break:break-word}
+  .ai-msg.user{background:var(--accent);color:#fff;margin-left:auto;border-bottom-right-radius:5px}
+  .ai-msg.model{background:var(--panel);border:1px solid var(--border);border-bottom-left-radius:5px}
+  .ai-chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+  .ai-chips button{background:var(--panel);border:1px solid rgba(108,92,231,.5);color:var(--accent2);border-radius:18px;padding:8px 14px;font-size:12px;font-weight:600}
+  .ai-chips button:hover{background:rgba(108,92,231,.15)}
+  .ai-inputbar{display:flex;gap:8px;margin-top:10px}
+  .ai-inputbar input{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:22px;padding:12px 16px;color:var(--text);font-size:13px}
+  .ai-inputbar .send{width:46px;height:46px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:16px}
+  .ai-think{color:var(--muted);font-size:12px;padding:6px 2px;font-style:italic}
+
   /* mobile header */
   .m-head{display:none}
   .icon-btn{background:var(--panel2);border:1px solid var(--border);border-radius:10px;width:38px;height:38px;color:var(--text);font-size:16px;display:flex;align-items:center;justify-content:center}
@@ -344,6 +358,9 @@
     <div class="nav-item" data-v="playbook" onclick="show('playbook')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
       Playbook</div>
+    <div class="nav-item" data-v="ai" onclick="show('ai')">
+      <span style="font-size:16px;width:18px;text-align:center;flex-shrink:0">✨</span>
+      Zella AI</div>
     <div class="nav-item" data-v="account" onclick="show('account')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3"/><path d="M2 10h20"/><path d="M16 15h2"/></svg>
       Account</div>
@@ -378,6 +395,7 @@
           <div class="avatar" id="avatar">?</div>
         </div>
       </div>
+      <div id="ai-headline"></div>
       <div id="dash-body"></div>
     </div>
 
@@ -439,6 +457,14 @@
         <button class="btn" onclick="openPbWizard()">+ New setup</button>
       </div>
       <div id="playbook-body"></div>
+    </div>
+
+    <!-- ZELLA AI -->
+    <div class="views" id="view-ai">
+      <div class="topbar">
+        <div><h1>✨ Zella AI</h1><div class="sub">Your trading coach — psychology, risk & performance, from YOUR real data</div></div>
+      </div>
+      <div id="ai-body"></div>
     </div>
 
     <!-- IMPORT -->
@@ -619,7 +645,7 @@ async function googleLogin(){
   const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});
   if(error) authMsg(error.message);
 }
-async function signOut(){ await sb.auth.signOut(); trades=[]; txs=[]; accounts=[]; currentAccount=null; }
+async function signOut(){ await sb.auth.signOut(); trades=[]; txs=[]; accounts=[]; currentAccount=null; geminiKey=''; aiMsgs=[]; }
 
 function setUser(u){
   const changed = (u&&u.id)!==(user&&user.id);
@@ -653,6 +679,7 @@ async function initProfile(){
     isAdmin=!!p.is_admin;
   }catch(e){ /* profiles table not created yet — app still works */ }
   document.getElementById('nav-admin').style.display=isAdmin?'':'none';
+  await loadSecrets();
   return true;
 }
 async function init(){
@@ -790,6 +817,7 @@ function show(v){
   if(v==='playbook') renderPlaybook();
   if(v==='account') renderAccount();
   if(v==='admin') renderAdmin();
+  if(v==='ai') renderAI();
 }
 function openDetail(id){ detailId=id; renderDetail();
   document.querySelectorAll('.views').forEach(x=>x.classList.remove('active'));
@@ -1117,6 +1145,7 @@ function renderDash(){
     </div>
   </div>`;
   renderMiniCal();
+  updateHeadline();
 }
 
 /* ================= CALENDARS ================= */
@@ -1305,6 +1334,9 @@ function renderDetail(){
       <button class="btn ghost" onclick="document.getElementById('shot-input').click()">📷 Add screenshots</button>
       <input type="file" id="shot-input" accept="image/*" multiple style="display:none" onchange="addShots(this.files);this.value=''">
       <div class="thumbs" id="thumbs"></div>
+      <div class="flabel">Zella AI</div>
+      <button class="btn ghost" onclick="analyzeTrade()">✨ Analyze this trade</button>
+      <div id="ai-trade-result"></div>
     </div>
   </div>`;
   renderThumbs(t);
@@ -1796,6 +1828,184 @@ async function loadSample(){
   }
   await importTrades(out);
   show('dashboard');
+}
+
+
+/* ================= ZELLA AI ================= */
+let geminiKey='', aiMsgs=[], aiBusy=false;
+
+async function loadSecrets(){
+  try{
+    const {data}=await sb.from('user_secrets').select('gemini_key').eq('user_id',user.id).maybeSingle();
+    geminiKey=(data&&data.gemini_key)||'';
+  }catch(e){ geminiKey=''; }
+}
+async function saveGeminiKey(k){
+  geminiKey=k.trim();
+  const {error}=await sb.from('user_secrets').upsert({user_id:user.id, gemini_key:geminiKey, updated_at:new Date().toISOString()},{onConflict:'user_id'});
+  if(error){ alert(error.message+'\n\nDid you run the Zella AI SQL (section 9)?'); return false; }
+  return true;
+}
+
+function aiDataContext(){
+  const s=computeStats(trades);
+  const txSum=txs.reduce((a,t)=>a+t.amount,0);
+  const bal=txSum+s.net;
+  const acct=accounts.find(a=>a.id===currentAccount);
+  let out=`TRADER: ${window._name||'trader'} · Account: "${acct?acct.name:'Main'}" · Balance: $${bal.toFixed(2)} (deposits $${txSum.toFixed(2)} + P&L $${s.net.toFixed(2)})\n`;
+  out+=`OVERALL: ${s.n} trades · win rate ${s.winRate.toFixed(1)}% · profit factor ${s.profitFactor>=99?'inf':s.profitFactor.toFixed(2)} · avg win $${s.avgWin.toFixed(0)} · avg loss $${s.avgLoss.toFixed(0)} · max drawdown $${s.maxDD.toFixed(0)} · day win rate ${s.dayWinRate.toFixed(0)}%\n`;
+  // per setup
+  out+='SETUPS: '+Object.entries(s.bySetup).map(([k,v])=>{
+    const g=computeStats(v); return `${k}: ${g.n}t net $${g.net.toFixed(0)} wr ${g.winRate.toFixed(0)}%`;
+  }).join(' | ')+'\n';
+  // emotions vs pnl
+  const emo={};
+  trades.forEach(t=>{ if(t.emotion){ emo[t.emotion]=emo[t.emotion]||{n:0,net:0}; emo[t.emotion].n++; emo[t.emotion].net+=t.profit; }});
+  if(Object.keys(emo).length) out+='EMOTION vs P&L: '+Object.entries(emo).map(([e,v])=>`${e} ${v.n}t $${v.net.toFixed(0)}`).join(' | ')+'\n';
+  // revenge trading: entered <45min after a loss
+  const sorted=[...trades].sort((a,b)=>new Date(a.closeTime)-new Date(b.closeTime));
+  let rev={n:0,net:0};
+  for(let i=1;i<sorted.length;i++){
+    if(sorted[i-1].profit<0 && (new Date(sorted[i].openTime)-new Date(sorted[i-1].closeTime))<45*60000){ rev.n++; rev.net+=sorted[i].profit; }
+  }
+  if(rev.n) out+=`REVENGE-WINDOW TRADES (opened <45min after a loss): ${rev.n} trades, net $${rev.net.toFixed(0)}\n`;
+  // risk metrics
+  const losses=trades.filter(t=>t.profit<0).map(t=>t.profit);
+  if(losses.length&&bal>0){
+    const maxLoss=Math.min(...losses);
+    out+=`RISK: largest single loss $${Math.abs(maxLoss).toFixed(0)} (${(Math.abs(maxLoss)/bal*100).toFixed(1)}% of balance) · avg loss ${(s.avgLoss/bal*100).toFixed(1)}% of balance · SL set on ${trades.filter(t=>t.sl!=null).length}/${trades.length} trades\n`;
+  }
+  // overtrading
+  const perDay={}; trades.forEach(t=>{ const d=t.closeTime.slice(0,10); perDay[d]=(perDay[d]||0)+1; });
+  const maxDay=Object.entries(perDay).sort((a,b)=>b[1]-a[1])[0];
+  if(maxDay) out+=`Busiest day: ${maxDay[0]} with ${maxDay[1]} trades · avg ${(trades.length/Math.max(Object.keys(perDay).length,1)).toFixed(1)} trades/day\n`;
+  // playbook rules
+  if(playbooks.length) out+='PLAYBOOK RULES: '+playbooks.map(p=>`[${p.name}] entry: ${(p.entry_rules||'-').slice(0,120)} · exit: ${(p.exit_rules||'-').slice(0,80)} · risk: ${(p.risk_rules||'-').slice(0,80)}`).join(' || ')+'\n';
+  // last 30 trades
+  out+='LAST 30 TRADES (newest last):\n'+sorted.slice(-30).map(t=>
+    `${t.closeTime.slice(0,10)} ${t.symbol} ${t.side} lots:${t.lots??'?'} P&L:$${t.profit.toFixed(2)} setup:${t.setup||'-'} emo:${t.emotion||'-'} SL:${t.sl!=null?'y':'n'}${t.notesPost?' review:"'+t.notesPost.slice(0,70)+'"':''}`
+  ).join('\n');
+  return out;
+}
+
+const AI_SYSTEM=`You are Zella AI, a sharp trading performance coach inside the user's trading journal.
+Focus areas in order: 1) trading psychology 2) risk management 3) strategy/statistics.
+Style: direct, warm, honest like a trusted mentor. Short paragraphs. A few emojis. Use THEIR real numbers from the data — quote exact figures. Call out dangerous patterns bluntly (revenge trading, missing stop losses, oversized losses, emotion-driven losses). Celebrate what genuinely works. Give at most 3 concrete action points per answer. Never give financial advice to buy/sell specific assets; coach the process, not the market. Answer in the user's language if they write in another language.`;
+
+async function gemini(userMsgs){
+  if(!geminiKey) return '⚠ Add your free Gemini API key first (see the box above).';
+  try{
+    const contents=userMsgs.map(m=>({role:m.role==='user'?'user':'model',parts:[{text:m.text}]}));
+    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(geminiKey)}`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        system_instruction:{parts:[{text:AI_SYSTEM+'\n\n===USER DATA===\n'+aiDataContext()}]},
+        contents
+      })
+    });
+    const j=await r.json();
+    if(!r.ok) return '⚠ Gemini error: '+((j.error&&j.error.message)||r.status)+'\nCheck your key (should start with AIza).';
+    return j.candidates[0].content.parts[0].text.trim();
+  }catch(e){ return '⚠ Could not reach Gemini: '+(e.message||'network error'); }
+}
+
+function mdLite(t){
+  return esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^\* /gm,'• ').replace(/^- /gm,'• ');
+}
+
+/* ---- AI page ---- */
+function renderAI(){
+  const el=document.getElementById('ai-body');
+  let html='';
+  if(!geminiKey){
+    html+=`<div class="panel" style="margin-bottom:14px">
+      <h3>🔑 One-time setup — your free AI key</h3>
+      <div style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:10px">
+        1. Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent2)">aistudio.google.com/app/apikey</a> (free Google account)<br>
+        2. Click <b style="color:var(--text)">Create API key</b> → copy it (starts with <b style="color:var(--text)">AIza</b>)<br>
+        3. Paste it below — it's stored privately in YOUR account only. Free tier is plenty.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input type="text" id="gem-key" placeholder="AIza..." style="flex:1;min-width:200px">
+        <button class="btn" onclick="saveGeminiKey(document.getElementById('gem-key').value).then(ok=>{if(ok)renderAI();})">Save key</button>
+      </div></div>`;
+  } else {
+    html+=`<div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+      <span class="chip">🔑 key saved · <a style="color:var(--accent2);cursor:pointer" onclick="geminiKey='';renderAI()">change</a></span></div>`;
+  }
+  html+=`<div class="ai-chips">
+    <button onclick="aiQuick('psy')">🧠 Psychology check</button>
+    <button onclick="aiQuick('risk')">🛡 Risk audit</button>
+    <button onclick="aiQuick('week')">📊 Review my week</button>
+    <button onclick="aiQuick('grow')">🌱 How do I grow from here?</button>
+  </div>
+  <div id="ai-chat">${aiMsgs.map(m=>`<div class="ai-msg ${m.role}">${mdLite(m.text)}</div>`).join('')}
+    ${aiBusy?'<div class="ai-think">Zella AI is analyzing your data…</div>':''}
+    ${!aiMsgs.length&&!aiBusy?'<div class="empty" style="padding:26px">Ask anything about your trading — I can see your stats, emotions, setups and risk.<br>Or tap a quick action above. 👆</div>':''}
+  </div>
+  <div class="ai-inputbar">
+    <input type="text" id="ai-input" placeholder="e.g. why do I keep losing on XAUUSD?" onkeydown="if(event.key==='Enter')aiSend()">
+    <button class="send" onclick="aiSend()">➤</button>
+  </div>`;
+  el.innerHTML=html;
+  const c=document.getElementById('ai-chat');
+  if(c) c.scrollTop=c.scrollHeight;
+}
+
+const AI_QUICK={
+  psy:"Do a deep PSYCHOLOGY check on me. Analyze my emotion tags vs results, revenge-trading pattern, discipline with notes/journaling. Be honest. End with 3 concrete psychological rules for me.",
+  risk:"Do a strict RISK MANAGEMENT audit. Analyze my loss sizes vs balance, stop-loss usage, lot sizing consistency, drawdown. Tell me exactly what to change, with numbers.",
+  week:"Review my recent trading like a weekly report: what worked, what didn't, my best and worst habits, and my single biggest leak. Use my real numbers.",
+  grow:"Given my stats, balance and playbook: what is the realistic path to grow this account? What should I focus on for the next 2 weeks? Be specific and honest about my weaknesses."
+};
+function aiQuick(k){ aiSendText(AI_QUICK[k]); }
+function aiSend(){
+  const inp=document.getElementById('ai-input');
+  if(inp&&inp.value.trim()) { const v=inp.value.trim(); inp.value=''; aiSendText(v); }
+}
+async function aiSendText(text){
+  if(aiBusy) return;
+  if(!geminiKey){ renderAI(); return; }
+  aiMsgs.push({role:'user',text});
+  aiBusy=true; renderAI();
+  const reply=await gemini(aiMsgs.slice(-12));
+  aiMsgs.push({role:'model',text:reply});
+  aiBusy=false; renderAI();
+}
+
+/* ---- daily headline ---- */
+async function updateHeadline(){
+  const el=document.getElementById('ai-headline');
+  if(!el) return;
+  if(!trades.length){ el.innerHTML=''; return; }
+  if(!geminiKey){
+    el.innerHTML=`<div class="ai-hl">✨ <b>Zella AI</b> can give you a daily insight on your P&L, psychology and risk — <a style="color:var(--accent2);cursor:pointer" onclick="show('ai')">add your free Gemini key →</a></div>`;
+    return;
+  }
+  const key='zb_hl_'+user.id+'_'+(currentAccount||'x')+'_'+Repo_today();
+  let cached=null; try{ cached=localStorage.getItem(key); }catch(e){}
+  if(cached){ el.innerHTML=`<div class="ai-hl">✨ ${mdLite(cached)} <a style="color:var(--muted);font-size:11px;cursor:pointer" onclick="localStorage.removeItem('${key}');updateHeadline()">↻</a></div>`; return; }
+  el.innerHTML='<div class="ai-hl" style="color:var(--muted)">✨ Zella AI is reading your data…</div>';
+  const hl=await gemini([{role:'user',text:'Write TODAY\'S HEADLINE for my dashboard: ONE punchy insight (max 28 words) from my most recent data — psychology, risk or performance. Most important thing I should know today. No preamble, just the line.'}]);
+  if(!hl.startsWith('⚠')){ try{ localStorage.setItem(key,hl); }catch(e){} }
+  el.innerHTML=`<div class="ai-hl">✨ ${mdLite(hl)}</div>`;
+}
+function Repo_today(){ return new Date().toISOString().slice(0,10); }
+
+/* ---- per-trade analysis ---- */
+async function analyzeTrade(){
+  const t=trades.find(x=>x.id===detailId); if(!t) return;
+  const box=document.getElementById('ai-trade-result');
+  if(!geminiKey){ box.innerHTML='<div class="ai-hl">Add your free Gemini key in the ✨ Zella AI tab first.</div>'; return; }
+  box.innerHTML='<div class="ai-think">Analyzing this trade against your playbook and history…</div>';
+  const pb=playbooks.find(p=>p.name===t.setup);
+  const similar=trades.filter(x=>x.setup===t.setup&&x.id!==t.id);
+  const g=similar.length?computeStats(similar):null;
+  const prompt=`Analyze THIS SINGLE TRADE deeply:\n${t.closeTime.slice(0,10)} ${t.symbol} ${t.side} lots:${t.lots??'?'} entry:${t.entry??'?'} exit:${t.exit??'?'} SL:${t.sl??'none'} TP:${t.tp??'none'} P&L:$${t.profit.toFixed(2)} emotion:${t.emotion||'-'}\nPre-notes:"${t.notesPre||'-'}"\nPost-review:"${t.notesPost||'-'}"\n`+
+    (pb?`Its playbook rules — entry: ${pb.entry_rules||'-'} | exit: ${pb.exit_rules||'-'} | risk: ${pb.risk_rules||'-'}\n`:'No playbook rules defined for this setup.\n')+
+    (g?`Other "${t.setup}" trades: ${g.n}, net $${g.net.toFixed(0)}, wr ${g.winRate.toFixed(0)}%\n`:'')+
+    'Did I follow my rules? Was the risk right? What should I learn? Max 130 words.';
+  const reply=await gemini([{role:'user',text:prompt}]);
+  box.innerHTML=`<div class="ai-hl" style="margin-top:10px">🤖 ${mdLite(reply)}</div>`;
 }
 
 /* ================= RATINGS ================= */

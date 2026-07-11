@@ -312,6 +312,29 @@ alter table public.transactions drop constraint if exists transactions_user_id_t
 alter table public.transactions drop constraint if exists tx_user_account_key;
 alter table public.transactions add constraint tx_user_account_key unique (user_id, account_id, tx_key);
 
+-- ============================================================
+-- 9. ZELLA AI — per-user Gemini API key (private, not even admin can read it)
+-- ============================================================
+create table if not exists public.user_secrets (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  gemini_key text default '',
+  updated_at timestamptz default now()
+);
+alter table public.user_secrets enable row level security;
+
+drop policy if exists "own secret select" on public.user_secrets;
+create policy "own secret select" on public.user_secrets
+  for select using (auth.uid() = user_id);
+drop policy if exists "own secret insert" on public.user_secrets;
+create policy "own secret insert" on public.user_secrets
+  for insert with check (auth.uid() = user_id);
+drop policy if exists "own secret update" on public.user_secrets;
+create policy "own secret update" on public.user_secrets
+  for update using (auth.uid() = user_id);
+drop policy if exists "own secret delete" on public.user_secrets;
+create policy "own secret delete" on public.user_secrets
+  for delete using (auth.uid() = user_id);
+
 -- 7. MAKE YOURSELF ADMIN (edit the email, run after logging in once)
 -- ============================================================
 update public.profiles set is_admin = true

@@ -275,10 +275,16 @@
   .ai-chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 16px}
   .ai-chips button{background:var(--panel);border:1px solid rgba(108,92,231,.5);color:var(--accent2);border-radius:20px;padding:9px 15px;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;transition:.15s}
   .ai-chips button:hover{background:rgba(108,92,231,.18);transform:translateY(-1px)}
-  .ai-wrap{max-width:840px;margin:0 auto;display:flex;flex-direction:column;height:calc(100vh - 200px);min-height:420px}
-  .ai-topbtns{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+  .ai-layout{display:flex;gap:16px;height:calc(100vh - 78px);max-width:1220px;margin:0 auto}
+  .ai-rail{width:236px;flex-shrink:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:14px;min-height:0}
+  .ai-rail .rail-title{font-size:16px;font-weight:800;margin-bottom:12px}
+  .rail-label{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;margin:14px 0 6px}
+  .rail-btn{display:flex;align-items:center;gap:9px;width:100%;background:transparent;border:1px solid transparent;color:var(--text);border-radius:10px;padding:9px 10px;font-size:12.5px;font-weight:600;cursor:pointer;text-align:left}
+  .rail-btn:hover{background:var(--panel2)}
+  .ai-rail-hist{flex:1;overflow-y:auto;min-height:60px;margin:0 -4px}
+  .ai-main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .ai-mctl{display:none}
   .ai-hist{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:8px;margin-bottom:12px;max-height:200px;overflow-y:auto;flex-shrink:0}
-  .ai-topbtns,.ai-chips{flex-shrink:0}
   .ai-inputbar{flex-shrink:0}
   .ai-hist-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px}
   .ai-hist-item:hover{background:var(--panel2)}
@@ -347,8 +353,10 @@
     .cal .day .t{display:none}
     .chip{white-space:nowrap}
     .top-right{max-width:100%}
-    .ai-chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
-    .ai-wrap{height:calc(100dvh - 300px);min-height:360px}
+    .ai-layout{height:calc(100dvh - 200px);min-height:380px;gap:0}
+    .ai-rail{display:none}
+    .ai-mctl{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;flex-shrink:0}
+    .ai-mctl button{white-space:nowrap;background:var(--panel);border:1px solid rgba(108,92,231,.5);color:var(--accent2);border-radius:18px;padding:8px 13px;font-size:12px;font-weight:600}
     .ai-msg{max-width:88%}
     .sidebar .acct-switch{display:none}
     .sidebar .nav-item[data-v="playbook"],.sidebar .nav-item[data-v="account"],.sidebar .nav-item[data-v="import"],#nav-admin{display:none!important}
@@ -530,9 +538,6 @@
 
     <!-- ZELLA AI -->
     <div class="views" id="view-ai">
-      <div class="topbar">
-        <div><h1>✨ Zella AI</h1><div class="sub">Your trading coach — psychology, risk & performance, from YOUR real data</div></div>
-      </div>
       <div id="ai-body"></div>
     </div>
 
@@ -2174,63 +2179,71 @@ function maybePopOrders(){
 /* ---- AI page ---- */
 function renderAI(){
   const el=document.getElementById('ai-body');
-  loadAIChats().then(()=>{ if(aiHistOpen) renderAI._refresh&&renderAI._refresh(); });
-  let html='<div class="ai-wrap">';
-  if(!geminiKey){
-    html+=`<div class="panel" style="margin-bottom:14px">
-      <h3>🔑 One-time setup — your free AI key</h3>
-      <div style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:10px">
-        1. Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent2)">aistudio.google.com/app/apikey</a> (free Google account)<br>
-        2. Click <b style="color:var(--text)">Create API key</b> → copy it (starts with <b style="color:var(--text)">AIza</b> or <b style="color:var(--text)">AQ.</b>)<br>
-        3. Paste it below — it's stored privately in YOUR account only. Free tier is plenty.</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <input type="text" id="gem-key" placeholder="AIza... or AQ...." style="flex:1;min-width:200px">
-        <button class="btn" onclick="saveGeminiKey(document.getElementById('gem-key').value).then(ok=>{if(ok)renderAI();})">Save key</button>
-      </div></div>`;
-  } else {
-    html+=`<div style="display:flex;justify-content:flex-end;margin-bottom:6px">
-      <span class="chip">🔑 key saved · <a style="color:var(--accent2);cursor:pointer" onclick="geminiKey='';renderAI()">change</a></span></div>`;
-  }
-  html+=`<div class="ai-topbtns">
-    <div style="display:flex;gap:8px">
-      <button class="btn ghost" onclick="newChat()">＋ New chat</button>
-      <button class="btn ghost" onclick="aiHistOpen=!aiHistOpen;renderAI()">🕘 History${aiChats.length?' ('+aiChats.length+')':''}</button>
-    </div>
-  </div>
-  ${aiHistOpen?`<div class="ai-hist">${aiChats.length?aiChats.map(c=>`
+  loadAIChats().then(()=>{ const h=document.getElementById('ai-rail-hist'); if(h) h.innerHTML=railHistHtml(); });
+  const histItem=c=>`
     <div class="ai-hist-item ${c.id===currentChatId?'on':''}">
       <div class="t" onclick="openChat('${c.id}')">${esc(c.title||'Chat')}</div>
       <div class="d">${new Date(c.updated_at).toLocaleDateString('en',{month:'short',day:'numeric'})}</div>
       <div class="x" onclick="deleteChat('${c.id}')">✕</div>
-    </div>`).join(''):'<div class="empty" style="padding:14px">No saved conversations yet</div>'}</div>`:''}
-  <div class="ai-chips">
-    <button onclick="aiQuick('psy')">🧠 Psychology check</button>
-    <button onclick="aiQuick('risk')">🛡 Risk audit</button>
-    <button onclick="aiQuick('week')">📊 Review my week</button>
-    <button onclick="aiQuick('grow')">🌱 How do I grow from here?</button>
-  </div>
-  <div id="ai-chat">${aiMsgs.map(m=> m.role==='user'
-    ? `<div class="ai-row right"><div class="ai-msg user">${mdLite(m.text)}</div></div>`
-    : `<div class="ai-row"><div class="ai-ava">✨</div><div class="ai-msg model">${mdRich(m.text)}</div></div>`).join('')}
-    ${aiBusy?'<div class="ai-row"><div class="ai-ava">✨</div><div class="ai-dots"><i></i><i></i><i></i></div></div>':''}
-    ${!aiMsgs.length&&!aiBusy?'<div class="empty" style="padding:26px">Ask anything about your trading — I can see your stats, emotions, setups and risk.<br>Or tap a quick action above. 👆</div>':''}
-    <div id="ai-end"></div>
-  </div>
-  <div class="ai-inputbar">
-    <input type="text" id="ai-input" placeholder="e.g. why do I keep losing on XAUUSD?" onkeydown="if(event.key==='Enter')aiSend()" ${aiBusy?'disabled':''}>
-    <button class="send" onclick="aiSend()" ${aiBusy?'disabled':''}>➤</button>
-  </div></div>`;
-  const prev=document.getElementById('ai-chat');
+    </div>`;
+  window.railHistHtml=()=>aiChats.length?aiChats.map(histItem).join(''):'<div style="color:var(--muted);font-size:11.5px;padding:8px">No conversations yet</div>';
+
+  const keyCard = geminiKey ? '' : `<div class="panel" style="margin-bottom:12px;flex-shrink:0">
+      <h3>🔑 One-time setup — your free AI key</h3>
+      <div style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:10px">
+        1. Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent2)">aistudio.google.com/app/apikey</a> (free Google account)<br>
+        2. Click <b style="color:var(--text)">Create API key</b> → copy it (starts with <b style="color:var(--text)">AIza</b> or <b style="color:var(--text)">AQ.</b>)<br>
+        3. Paste it below — stored privately in YOUR account only. Free tier is plenty.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input type="text" id="gem-key" placeholder="AIza... or AQ...." style="flex:1;min-width:200px">
+        <button class="btn" onclick="saveGeminiKey(document.getElementById('gem-key').value).then(ok=>{if(ok)renderAI();})">Save key</button>
+      </div></div>`;
+
+  const prevChat=document.getElementById('ai-chat');
   let stick=true, prevTop=0;
-  if(prev&&prev.scrollHeight>prev.clientHeight){
-    stick=prev.scrollTop+prev.clientHeight>=prev.scrollHeight-90;
-    prevTop=prev.scrollTop;
+  if(prevChat&&prevChat.scrollHeight>prevChat.clientHeight){
+    stick=prevChat.scrollTop+prevChat.clientHeight>=prevChat.scrollHeight-90;
+    prevTop=prevChat.scrollTop;
   }
-  el.innerHTML=html;
+  el.innerHTML=`<div class="ai-layout">
+    <div class="ai-rail">
+      <div class="rail-title">✨ Zella AI</div>
+      <button class="btn" style="width:100%" onclick="newChat()">＋ New chat</button>
+      <div class="rail-label">Quick actions</div>
+      <button class="rail-btn" onclick="aiQuick('psy')">🧠 Psychology check</button>
+      <button class="rail-btn" onclick="aiQuick('risk')">🛡 Risk audit</button>
+      <button class="rail-btn" onclick="aiQuick('week')">📊 Review my week</button>
+      <button class="rail-btn" onclick="aiQuick('grow')">🌱 How do I grow?</button>
+      <div class="rail-label">History</div>
+      <div class="ai-rail-hist" id="ai-rail-hist">${railHistHtml()}</div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted)">${geminiKey?`🔑 key saved · <a style="color:var(--accent2);cursor:pointer" onclick="geminiKey='';renderAI()">change</a>`:'🔑 no key yet'}</div>
+    </div>
+    <div class="ai-main">
+      <div class="ai-mctl">
+        <button onclick="newChat()">＋ New</button>
+        <button onclick="aiHistOpen=!aiHistOpen;renderAI()">🕘 History${aiChats.length?' ('+aiChats.length+')':''}</button>
+        <button onclick="aiQuick('psy')">🧠 Psychology</button>
+        <button onclick="aiQuick('risk')">🛡 Risk</button>
+        <button onclick="aiQuick('week')">📊 Week</button>
+        <button onclick="aiQuick('grow')">🌱 Grow</button>
+      </div>
+      ${aiHistOpen?`<div class="ai-hist">${railHistHtml()}</div>`:''}
+      ${keyCard}
+      <div id="ai-chat">${aiMsgs.map(m=> m.role==='user'
+        ? `<div class="ai-row right"><div class="ai-msg user">${mdLite(m.text)}</div></div>`
+        : `<div class="ai-row"><div class="ai-ava">✨</div><div class="ai-msg model">${mdRich(m.text)}</div></div>`).join('')}
+        ${aiBusy?'<div class="ai-row"><div class="ai-ava">✨</div><div class="ai-dots"><i></i><i></i><i></i></div></div>':''}
+        ${!aiMsgs.length&&!aiBusy?'<div class="empty" style="padding:40px 20px">Your coach sees your stats, emotions, setups and risk.<br>Ask anything — or use a quick action. 👈</div>':''}
+      </div>
+      <div class="ai-inputbar">
+        <input type="text" id="ai-input" placeholder="Message Zella AI…" onkeydown="if(event.key==='Enter')aiSend()" ${aiBusy?'disabled':''}>
+        <button class="send" onclick="aiSend()" ${aiBusy?'disabled':''}>➤</button>
+      </div>
+    </div>
+  </div>`;
   const c=document.getElementById('ai-chat');
   if(c) c.scrollTop = stick ? c.scrollHeight : prevTop;
 }
-
 const AI_QUICK={
   psy:"Do a deep PSYCHOLOGY check on me. Analyze my emotion tags vs results, revenge-trading pattern, discipline with notes/journaling. Be honest. End with 3 concrete psychological rules for me.",
   risk:"Do a strict RISK MANAGEMENT audit. Analyze my loss sizes vs balance, stop-loss usage, lot sizing consistency, drawdown. Tell me exactly what to change, with numbers.",

@@ -335,6 +335,45 @@ drop policy if exists "own secret delete" on public.user_secrets;
 create policy "own secret delete" on public.user_secrets
   for delete using (auth.uid() = user_id);
 
+-- ============================================================
+-- 10. ZELLA AI — saved conversations + daily Manager's Orders
+-- ============================================================
+create table if not exists public.ai_chats (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text default 'New chat',
+  messages jsonb default '[]'::jsonb,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table public.ai_chats enable row level security;
+drop policy if exists "own chats select" on public.ai_chats;
+create policy "own chats select" on public.ai_chats for select using (auth.uid() = user_id);
+drop policy if exists "own chats insert" on public.ai_chats;
+create policy "own chats insert" on public.ai_chats for insert with check (auth.uid() = user_id);
+drop policy if exists "own chats update" on public.ai_chats;
+create policy "own chats update" on public.ai_chats for update using (auth.uid() = user_id);
+drop policy if exists "own chats delete" on public.ai_chats;
+create policy "own chats delete" on public.ai_chats for delete using (auth.uid() = user_id);
+
+create table if not exists public.ai_orders (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  date text not null,
+  orders jsonb default '[]'::jsonb,
+  created_at timestamptz default now(),
+  unique (user_id, date)
+);
+alter table public.ai_orders enable row level security;
+drop policy if exists "own orders select" on public.ai_orders;
+create policy "own orders select" on public.ai_orders for select using (auth.uid() = user_id);
+drop policy if exists "own orders insert" on public.ai_orders;
+create policy "own orders insert" on public.ai_orders for insert with check (auth.uid() = user_id);
+drop policy if exists "own orders update" on public.ai_orders;
+create policy "own orders update" on public.ai_orders for update using (auth.uid() = user_id);
+drop policy if exists "own orders delete" on public.ai_orders;
+create policy "own orders delete" on public.ai_orders for delete using (auth.uid() = user_id);
+
 -- 7. MAKE YOURSELF ADMIN (edit the email, run after logging in once)
 -- ============================================================
 update public.profiles set is_admin = true

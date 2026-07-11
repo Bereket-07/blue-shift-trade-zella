@@ -275,7 +275,23 @@
   .ai-chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 16px}
   .ai-chips button{background:var(--panel);border:1px solid rgba(108,92,231,.5);color:var(--accent2);border-radius:20px;padding:9px 15px;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;transition:.15s}
   .ai-chips button:hover{background:rgba(108,92,231,.18);transform:translateY(-1px)}
-  #ai-chat{height:calc(100vh - 360px);min-height:260px;overflow-y:auto;padding-right:6px;scroll-behavior:smooth}
+  .ai-wrap{max-width:840px;margin:0 auto}
+  .ai-topbtns{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+  .ai-hist{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:8px;margin-bottom:12px;max-height:240px;overflow-y:auto}
+  .ai-hist-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px}
+  .ai-hist-item:hover{background:var(--panel2)}
+  .ai-hist-item.on{background:rgba(108,92,231,.15)}
+  .ai-hist-item .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ai-hist-item .d{color:var(--muted);font-size:10.5px;white-space:nowrap}
+  .ai-hist-item .x{color:var(--muted);padding:0 4px}
+  .ai-hist-item .x:hover{color:var(--red)}
+  .orders-card{background:linear-gradient(120deg,rgba(240,80,110,.12),rgba(108,92,231,.1));border:1px solid rgba(240,80,110,.4);border-radius:14px;padding:14px 16px;margin-bottom:16px}
+  .orders-card h3{font-size:13px;font-weight:800;margin-bottom:10px;color:var(--red)}
+  .order-item{display:flex;gap:10px;align-items:flex-start;padding:6px 0;font-size:13px;line-height:1.5;cursor:pointer}
+  .order-item .cb{width:20px;height:20px;border-radius:6px;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;margin-top:1px}
+  .order-item.done .cb{background:var(--green);border-color:var(--green);color:#06281c;font-weight:800}
+  .order-item.done span{opacity:.55;text-decoration:line-through}
+  #ai-chat{height:calc(100vh - 400px);min-height:260px;overflow-y:auto;padding-right:6px;scroll-behavior:smooth}
   #ai-chat::-webkit-scrollbar{width:6px}
   #ai-chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
   .ai-inputbar{display:flex;gap:8px;margin-top:12px}
@@ -446,6 +462,7 @@
         </div>
       </div>
       <div id="ai-headline"></div>
+      <div id="ai-orders"></div>
       <div id="dash-body"></div>
     </div>
 
@@ -629,6 +646,16 @@
   </div>
 </div>
 
+<!-- MANAGER'S ORDERS MODAL -->
+<div class="modal" id="modal-orders">
+  <div class="modal-card" style="max-width:480px">
+    <h2>📋 Your manager has orders <button class="x" onclick="document.getElementById('modal-orders').classList.remove('on')">✕</button></h2>
+    <div style="color:var(--muted);font-size:12.5px;margin-bottom:10px">Generated from your own statements — non-negotiable for today.</div>
+    <div id="orders-modal-list"></div>
+    <div class="modal-foot"><button class="btn" onclick="document.getElementById('modal-orders').classList.remove('on')">💪 Understood</button></div>
+  </div>
+</div>
+
 <!-- RATING MODAL -->
 <div class="modal" id="modal-rate">
   <div class="modal-card" style="max-width:440px">
@@ -711,7 +738,7 @@ async function googleLogin(){
   const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});
   if(error) authMsg(error.message);
 }
-async function signOut(){ await sb.auth.signOut(); trades=[]; txs=[]; accounts=[]; currentAccount=null; geminiKey=''; aiMsgs=[]; }
+async function signOut(){ await sb.auth.signOut(); trades=[]; txs=[]; accounts=[]; currentAccount=null; geminiKey=''; aiMsgs=[]; aiChats=[]; currentChatId=null; aiChatsLoaded=false; ordersRow=null; }
 
 function setUser(u){
   const changed = (u&&u.id)!==(user&&user.id);
@@ -1214,6 +1241,7 @@ function renderDash(){
   </div>`;
   renderMiniCal();
   updateHeadline();
+  ensureOrders();
 }
 
 /* ================= CALENDARS ================= */
@@ -1900,7 +1928,7 @@ async function loadSample(){
 
 
 /* ================= ZELLA AI ================= */
-let geminiKey='', aiMsgs=[], aiBusy=false;
+let geminiKey='', aiMsgs=[], aiBusy=false, aiChats=[], currentChatId=null, aiHistOpen=false, aiChatsLoaded=false, ordersRow=null;
 
 async function loadSecrets(){
   try{
@@ -2045,10 +2073,107 @@ function mdRich(t){
   return html||inline(t);
 }
 
+/* ---- saved conversations ---- */
+async function loadAIChats(){
+  if(aiChatsLoaded) return;
+  try{
+    const {data}=await sb.from('ai_chats').select('id,title,updated_at').eq('user_id',user.id).order('updated_at',{ascending:false}).limit(30);
+    if(data) aiChats=data;
+    aiChatsLoaded=true;
+  }catch(e){ aiChatsLoaded=true; }
+}
+async function openChat(id){
+  const {data}=await sb.from('ai_chats').select('messages').eq('id',id).maybeSingle();
+  aiMsgs=(data&&data.messages)||[];
+  currentChatId=id; aiHistOpen=false; renderAI();
+}
+function newChat(){ currentChatId=null; aiMsgs=[]; aiHistOpen=false; renderAI(); }
+async function deleteChat(id){
+  if(!confirm('Delete this conversation?')) return;
+  await sb.from('ai_chats').delete().eq('id',id);
+  aiChats=aiChats.filter(c=>c.id!==id);
+  if(currentChatId===id){ currentChatId=null; aiMsgs=[]; }
+  renderAI();
+}
+async function persistChat(){
+  try{
+    const now=new Date().toISOString();
+    if(!currentChatId){
+      const title=(aiMsgs.find(m=>m.role==='user')||{text:'New chat'}).text.slice(0,45);
+      const {data}=await sb.from('ai_chats').insert({user_id:user.id,title,messages:aiMsgs,updated_at:now}).select('id,title,updated_at').maybeSingle();
+      if(data){ currentChatId=data.id; aiChats.unshift(data); }
+    }else{
+      await sb.from('ai_chats').update({messages:aiMsgs,updated_at:now}).eq('id',currentChatId);
+      const c=aiChats.find(x=>x.id===currentChatId);
+      if(c){ c.updated_at=now; aiChats=[c,...aiChats.filter(x=>x.id!==currentChatId)]; }
+    }
+  }catch(e){}
+}
+
+/* ---- Manager's Orders: daily directives without being asked ---- */
+async function ensureOrders(){
+  const el=document.getElementById('ai-orders');
+  if(!el) return;
+  if(!trades.length||!geminiKey){ el.innerHTML=''; return; }
+  const today=Repo_today();
+  if(ordersRow&&ordersRow.date===today){ renderOrders(); return; }
+  try{
+    const {data}=await sb.from('ai_orders').select('*').eq('user_id',user.id).eq('date',today).maybeSingle();
+    if(data){ ordersRow=data; renderOrders(); maybePopOrders(); return; }
+  }catch(e){ el.innerHTML=''; return; }
+  // generate fresh orders from the statements
+  const raw=await gemini([{role:'user',text:'You are my strict trading MANAGER. From my data, issue TODAY\'S NON-NEGOTIABLE ORDERS: 3 to 5 short imperative commands (max 14 words each) attacking my current worst risk and psychology problems. Output ONLY a JSON array of strings, nothing else. Example: ["No trade without a stop loss","Maximum 2 trades today"]'}]);
+  let list=[];
+  try{
+    const m=raw.match(/\[[\s\S]*\]/);
+    if(m) list=JSON.parse(m[0]).filter(x=>typeof x==='string').slice(0,5);
+  }catch(e){}
+  if(!list.length){ el.innerHTML=''; return; }
+  const orders=list.map(t=>({t,done:false}));
+  try{
+    const {data}=await sb.from('ai_orders').insert({user_id:user.id,date:today,orders}).select('*').maybeSingle();
+    ordersRow=data||{date:today,orders};
+  }catch(e){ ordersRow={date:today,orders}; }
+  renderOrders(); maybePopOrders();
+}
+function ordersListHtml(){
+  return ordersRow.orders.map((o,i)=>`
+    <div class="order-item ${o.done?'done':''}" onclick="toggleOrder(${i})">
+      <div class="cb">${o.done?'✓':''}</div><span>${esc(o.t)}</span>
+    </div>`).join('');
+}
+function renderOrders(){
+  const el=document.getElementById('ai-orders');
+  if(!el||!ordersRow||!ordersRow.orders.length){ if(el) el.innerHTML=''; return; }
+  const done=ordersRow.orders.filter(o=>o.done).length;
+  el.innerHTML=`<div class="orders-card">
+    <h3>📋 MANAGER'S ORDERS — TODAY <span style="float:right;color:var(--muted);font-weight:600">${done}/${ordersRow.orders.length}</span></h3>
+    ${ordersListHtml()}
+  </div>`;
+}
+async function toggleOrder(i){
+  if(!ordersRow) return;
+  ordersRow.orders[i].done=!ordersRow.orders[i].done;
+  renderOrders();
+  const ml=document.getElementById('orders-modal-list');
+  if(ml&&document.getElementById('modal-orders').classList.contains('on')) ml.innerHTML=ordersListHtml();
+  if(ordersRow.id){ try{ await sb.from('ai_orders').update({orders:ordersRow.orders}).eq('id',ordersRow.id); }catch(e){} }
+}
+function maybePopOrders(){
+  if(!ordersRow||!ordersRow.orders.length) return;
+  const k='zb_orders_pop_'+user.id;
+  let seen=null; try{ seen=localStorage.getItem(k); }catch(e){}
+  if(seen===ordersRow.date) return;
+  try{ localStorage.setItem(k,ordersRow.date); }catch(e){}
+  document.getElementById('orders-modal-list').innerHTML=ordersListHtml();
+  document.getElementById('modal-orders').classList.add('on');
+}
+
 /* ---- AI page ---- */
 function renderAI(){
   const el=document.getElementById('ai-body');
-  let html='';
+  loadAIChats().then(()=>{ if(aiHistOpen) renderAI._refresh&&renderAI._refresh(); });
+  let html='<div class="ai-wrap">';
   if(!geminiKey){
     html+=`<div class="panel" style="margin-bottom:14px">
       <h3>🔑 One-time setup — your free AI key</h3>
@@ -2064,7 +2189,19 @@ function renderAI(){
     html+=`<div style="display:flex;justify-content:flex-end;margin-bottom:6px">
       <span class="chip">🔑 key saved · <a style="color:var(--accent2);cursor:pointer" onclick="geminiKey='';renderAI()">change</a></span></div>`;
   }
-  html+=`<div class="ai-chips">
+  html+=`<div class="ai-topbtns">
+    <div style="display:flex;gap:8px">
+      <button class="btn ghost" onclick="newChat()">＋ New chat</button>
+      <button class="btn ghost" onclick="aiHistOpen=!aiHistOpen;renderAI()">🕘 History${aiChats.length?' ('+aiChats.length+')':''}</button>
+    </div>
+  </div>
+  ${aiHistOpen?`<div class="ai-hist">${aiChats.length?aiChats.map(c=>`
+    <div class="ai-hist-item ${c.id===currentChatId?'on':''}">
+      <div class="t" onclick="openChat('${c.id}')">${esc(c.title||'Chat')}</div>
+      <div class="d">${new Date(c.updated_at).toLocaleDateString('en',{month:'short',day:'numeric'})}</div>
+      <div class="x" onclick="deleteChat('${c.id}')">✕</div>
+    </div>`).join(''):'<div class="empty" style="padding:14px">No saved conversations yet</div>'}</div>`:''}
+  <div class="ai-chips">
     <button onclick="aiQuick('psy')">🧠 Psychology check</button>
     <button onclick="aiQuick('risk')">🛡 Risk audit</button>
     <button onclick="aiQuick('week')">📊 Review my week</button>
@@ -2080,7 +2217,7 @@ function renderAI(){
   <div class="ai-inputbar">
     <input type="text" id="ai-input" placeholder="e.g. why do I keep losing on XAUUSD?" onkeydown="if(event.key==='Enter')aiSend()" ${aiBusy?'disabled':''}>
     <button class="send" onclick="aiSend()" ${aiBusy?'disabled':''}>➤</button>
-  </div>`;
+  </div></div>`;
   const prev=document.getElementById('ai-chat');
   let stick=true, prevTop=0;
   if(prev&&prev.scrollHeight>prev.clientHeight){
@@ -2111,6 +2248,7 @@ async function aiSendText(text){
   const reply=await gemini(aiMsgs.slice(-12));
   aiMsgs.push({role:'model',text:reply});
   aiBusy=false; renderAI();
+  persistChat();
 }
 
 /* ---- daily headline ---- */

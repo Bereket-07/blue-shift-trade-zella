@@ -269,12 +269,16 @@
   .ai-msg.model ul,.ai-msg.model ol{margin:4px 0 12px 20px;padding:0}
   .ai-msg.model li{margin:6px 0;padding-left:2px}
   .ai-msg.model h4{font-size:13px;color:var(--accent2);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px}
-  .ai-msg.model b{color:var(--gold)}
+  .ai-msg.model b{color:#ffd98a;font-weight:700}
+  body.light .ai-msg.model b{color:#8a5d00}
   .ai-msg.model code{background:var(--panel2);border-radius:6px;padding:1px 6px;font-size:12px}
   .ai-chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 16px}
   .ai-chips button{background:var(--panel);border:1px solid rgba(108,92,231,.5);color:var(--accent2);border-radius:20px;padding:9px 15px;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;transition:.15s}
   .ai-chips button:hover{background:rgba(108,92,231,.18);transform:translateY(-1px)}
-  .ai-inputbar{display:flex;gap:8px;margin-top:12px;position:sticky;bottom:10px;background:var(--bg);padding:8px 0;z-index:6}
+  #ai-chat{height:calc(100vh - 360px);min-height:260px;overflow-y:auto;padding-right:6px;scroll-behavior:smooth}
+  #ai-chat::-webkit-scrollbar{width:6px}
+  #ai-chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .ai-inputbar{display:flex;gap:8px;margin-top:12px}
   .ai-inputbar input{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:24px;padding:13px 18px;color:var(--text);font-size:13.5px}
   .ai-inputbar input:focus{outline:none;border-color:var(--accent)}
   .ai-inputbar .send{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#5b8cff);border:none;color:#fff;font-size:16px;cursor:pointer;flex-shrink:0;box-shadow:0 4px 14px rgba(108,92,231,.45)}
@@ -326,7 +330,7 @@
     .chip{white-space:nowrap}
     .top-right{max-width:100%}
     .ai-chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
-    .ai-inputbar{bottom:calc(96px + env(safe-area-inset-bottom))}
+    #ai-chat{height:calc(100dvh - 420px);min-height:220px}
     .ai-msg{max-width:88%}
     .sidebar .acct-switch{display:none}
     .sidebar .nav-item[data-v="playbook"],.sidebar .nav-item[data-v="account"],.sidebar .nav-item[data-v="import"],#nav-admin{display:none!important}
@@ -2077,9 +2081,15 @@ function renderAI(){
     <input type="text" id="ai-input" placeholder="e.g. why do I keep losing on XAUUSD?" onkeydown="if(event.key==='Enter')aiSend()" ${aiBusy?'disabled':''}>
     <button class="send" onclick="aiSend()" ${aiBusy?'disabled':''}>➤</button>
   </div>`;
+  const prev=document.getElementById('ai-chat');
+  let stick=true, prevTop=0;
+  if(prev&&prev.scrollHeight>prev.clientHeight){
+    stick=prev.scrollTop+prev.clientHeight>=prev.scrollHeight-90;
+    prevTop=prev.scrollTop;
+  }
   el.innerHTML=html;
-  const endEl=document.getElementById('ai-end');
-  if(endEl&&(aiMsgs.length||aiBusy)) endEl.scrollIntoView({block:'end'});
+  const c=document.getElementById('ai-chat');
+  if(c) c.scrollTop = stick ? c.scrollHeight : prevTop;
 }
 
 const AI_QUICK={

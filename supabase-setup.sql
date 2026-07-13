@@ -374,6 +374,51 @@ create policy "own orders update" on public.ai_orders for update using (auth.uid
 drop policy if exists "own orders delete" on public.ai_orders;
 create policy "own orders delete" on public.ai_orders for delete using (auth.uid() = user_id);
 
+-- ============================================================
+-- 11. WEEKLY ANALYSIS — market calls with forced review
+-- ============================================================
+create table if not exists public.weekly_analyses (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  week_start text not null,
+  status text default 'open',
+  created_at timestamptz default now(),
+  unique (user_id, week_start)
+);
+alter table public.weekly_analyses enable row level security;
+drop policy if exists "own wa select" on public.weekly_analyses;
+create policy "own wa select" on public.weekly_analyses for select using (auth.uid() = user_id);
+drop policy if exists "own wa insert" on public.weekly_analyses;
+create policy "own wa insert" on public.weekly_analyses for insert with check (auth.uid() = user_id);
+drop policy if exists "own wa update" on public.weekly_analyses;
+create policy "own wa update" on public.weekly_analyses for update using (auth.uid() = user_id);
+drop policy if exists "own wa delete" on public.weekly_analyses;
+create policy "own wa delete" on public.weekly_analyses for delete using (auth.uid() = user_id);
+
+create table if not exists public.weekly_pairs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  analysis_id uuid not null references public.weekly_analyses(id) on delete cascade,
+  symbol text not null,
+  bias text default '',
+  expectation text default '',
+  before_shot text default '',
+  outcome text default '',
+  miss_reason text default '',
+  what_happened text default '',
+  after_shot text default '',
+  created_at timestamptz default now()
+);
+alter table public.weekly_pairs enable row level security;
+drop policy if exists "own wp select" on public.weekly_pairs;
+create policy "own wp select" on public.weekly_pairs for select using (auth.uid() = user_id);
+drop policy if exists "own wp insert" on public.weekly_pairs;
+create policy "own wp insert" on public.weekly_pairs for insert with check (auth.uid() = user_id);
+drop policy if exists "own wp update" on public.weekly_pairs;
+create policy "own wp update" on public.weekly_pairs for update using (auth.uid() = user_id);
+drop policy if exists "own wp delete" on public.weekly_pairs;
+create policy "own wp delete" on public.weekly_pairs for delete using (auth.uid() = user_id);
+
 -- 7. MAKE YOURSELF ADMIN (edit the email, run after logging in once)
 -- ============================================================
 update public.profiles set is_admin = true

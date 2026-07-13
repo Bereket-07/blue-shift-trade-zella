@@ -313,6 +313,23 @@
   .ai-dots i:nth-child(3){animation-delay:.36s}
   @keyframes aidot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-6px);opacity:1}}
 
+  /* weekly analysis */
+  .wk-shot{position:relative;margin-top:10px}
+  .wk-shot img{width:100%;max-height:430px;object-fit:contain;background:var(--panel2);border:1px solid var(--border);border-radius:14px;cursor:zoom-in;display:block}
+  .wk-shot .lbl{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.62);color:#fff;padding:4px 12px;border-radius:12px;font-size:10.5px;font-weight:800;letter-spacing:.5px}
+  .wk-cmp{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .verdict-btns{display:flex;gap:8px;margin:10px 0}
+  .verdict-btns button{flex:1;padding:12px;border-radius:12px;font-weight:800;font-size:13.5px;border:2px solid var(--border);background:var(--panel2);color:var(--text);cursor:pointer}
+  .verdict-btns button.on-c{border-color:var(--green);background:rgba(34,196,122,.18)}
+  .verdict-btns button.on-p{border-color:var(--gold);background:rgba(245,185,85,.15)}
+  .verdict-btns button.on-w{border-color:var(--red);background:rgba(240,80,110,.15)}
+  .miss-chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  .miss-chips button{background:var(--panel2);border:1px solid var(--border);color:var(--muted);border-radius:16px;padding:7px 12px;font-size:11.5px;font-weight:600;cursor:pointer}
+  .miss-chips button.on{border-color:var(--red);color:var(--red);background:rgba(240,80,110,.1)}
+  .wk-verdict-badge{display:inline-block;padding:4px 14px;border-radius:16px;font-size:12px;font-weight:800}
+  .wk-gate{background:linear-gradient(120deg,rgba(245,185,85,.14),rgba(240,80,110,.1));border:1px solid rgba(245,185,85,.5);border-radius:16px;padding:14px 16px;margin-bottom:14px}
+  @media(max-width:760px){ .wk-cmp{grid-template-columns:1fr} .verdict-btns{flex-direction:column} }
+
   /* mobile more-sheet */
   .sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:80;align-items:flex-end}
   .sheet.on{display:flex}
@@ -365,7 +382,7 @@
     .ai-inputbar .send{width:46px;height:46px}
     .ai-hist{max-height:45%}
     .sidebar .acct-switch{display:none}
-    .sidebar .nav-item[data-v="playbook"],.sidebar .nav-item[data-v="account"],.sidebar .nav-item[data-v="import"],#nav-admin{display:none!important}
+    .sidebar .nav-item[data-v="playbook"],.sidebar .nav-item[data-v="account"],.sidebar .nav-item[data-v="import"],.sidebar .nav-item[data-v="weekly"],#nav-admin{display:none!important}
     .nav-more{display:flex}
     .main{margin-left:0;padding:14px;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
     .main .topbar{padding-right:56px}
@@ -434,6 +451,9 @@
     <div class="nav-item" data-v="calendar" onclick="show('calendar')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
       Calendar</div>
+    <div class="nav-item" data-v="weekly" onclick="show('weekly')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 6-8"/><path d="M14 7h4v4"/><path d="M3 21h18"/></svg>
+      Weekly</div>
     <div class="nav-item" data-v="playbook" onclick="show('playbook')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
       Playbook</div>
@@ -533,6 +553,14 @@
       <div id="detail-body"></div>
     </div>
 
+    <!-- WEEKLY ANALYSIS -->
+    <div class="views" id="view-weekly">
+      <div class="topbar">
+        <div><h1>Weekly Analysis</h1><div class="sub">Call the market → face the truth → get sharper. Shared across all accounts.</div></div>
+      </div>
+      <div id="weekly-body"></div>
+    </div>
+
     <!-- PLAYBOOK -->
     <div class="views" id="view-playbook">
       <div class="topbar">
@@ -591,6 +619,7 @@
     <div class="sheet-grab"></div>
     <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Trading account</div>
     <select class="acct-switch" onchange="switchAccount(this.value)" style="margin-bottom:14px"></select>
+    <div class="sheet-item" onclick="sheetGo('weekly')">🗓 <span>Weekly analysis</span></div>
     <div class="sheet-item" onclick="sheetGo('playbook')">📖 <span>Playbook</span></div>
     <div class="sheet-item" onclick="sheetGo('account')">💳 <span>Account history</span></div>
     <div class="sheet-item" onclick="sheetGo('import')">⬆ <span>Import trades</span></div>
@@ -655,6 +684,31 @@
     <div class="modal-foot">
       <button class="btn ghost" id="tx-cancel" style="display:none" onclick="resetTxForm()">Cancel edit</button>
       <button class="btn" onclick="saveTx()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- WEEKLY PAIR MODAL -->
+<div class="modal" id="modal-wk">
+  <div class="modal-card">
+    <h2><span id="wk-title">Add a pair</span> <button class="x" onclick="document.getElementById('modal-wk').classList.remove('on')">✕</button></h2>
+    <div class="flabel" style="margin-top:0">Symbol *</div>
+    <input type="text" id="wk-symbol" list="symbol-dl" placeholder="XAUUSD">
+    <div class="flabel">Your bias *</div>
+    <div id="wk-bias-btns" style="display:flex;gap:8px">
+      <button class="btn ghost" data-b="bullish" onclick="wkSetBias('bullish')" style="flex:1">🟢 Bullish</button>
+      <button class="btn ghost" data-b="bearish" onclick="wkSetBias('bearish')" style="flex:1">🔴 Bearish</button>
+      <button class="btn ghost" data-b="range" onclick="wkSetBias('range')" style="flex:1">↔ Range</button>
+    </div>
+    <div class="flabel">Your expectation — "I expect… because…" *</div>
+    <textarea id="wk-exp" placeholder="I expect gold to push above 3350 because DXY is weakening, NFP on Friday, and we swept the weekly low…"></textarea>
+    <div class="flabel">Your chart (the hero of this analysis)</div>
+    <button class="btn ghost" type="button" onclick="document.getElementById('wk-file').click()">📊 Choose chart image</button>
+    <span id="wk-file-name" style="color:var(--muted);font-size:12px;margin-left:8px"></span>
+    <input type="file" id="wk-file" accept="image/*" style="display:none" onchange="document.getElementById('wk-file-name').textContent=this.files.length?this.files[0].name:''">
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="document.getElementById('modal-wk').classList.remove('on')">Cancel</button>
+      <button class="btn" onclick="saveWkPair()">Save pair</button>
     </div>
   </div>
 </div>
@@ -751,7 +805,7 @@ async function googleLogin(){
   const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});
   if(error) authMsg(error.message);
 }
-async function signOut(){ await sb.auth.signOut(); trades=[]; txs=[]; accounts=[]; currentAccount=null; geminiKey=''; aiMsgs=[]; aiChats=[]; currentChatId=null; aiChatsLoaded=false; ordersRow=null; }
+async function signOut(){ await sb.auth.signOut(); trades=[]; txs=[]; accounts=[]; currentAccount=null; geminiKey=''; aiMsgs=[]; aiChats=[]; currentChatId=null; aiChatsLoaded=false; ordersRow=null; weeks=[]; weekPairs=[]; weeksLoaded=false; }
 
 function setUser(u){
   const changed = (u&&u.id)!==(user&&user.id);
@@ -879,6 +933,7 @@ async function loadTrades(){
   txs = r2.error ? [] : (r2.data||[]).map(r=>({id:r.id,time:r.time,label:r.label||'',amount:+r.amount}));
   const r3=await sb.from('playbooks').select('*').eq('user_id',user.id).order('created_at',{ascending:true});
   playbooks = r3.error ? [] : (r3.data||[]);
+  loadWeekly();
   show(loadTrades._view||'dashboard');
   loadTrades._view=null;
 }
@@ -926,6 +981,7 @@ function show(v){
   if(v==='account') renderAccount();
   if(v==='admin') renderAdmin();
   if(v==='ai') renderAI();
+  if(v==='weekly') renderWeekly();
 }
 function openDetail(id){ detailId=id; renderDetail();
   document.querySelectorAll('.views').forEach(x=>x.classList.remove('active'));
@@ -1990,6 +2046,15 @@ function aiDataContext(){
   if(maxDay) out+=`Busiest day: ${maxDay[0]} with ${maxDay[1]} trades · avg ${(trades.length/Math.max(Object.keys(perDay).length,1)).toFixed(1)} trades/day\n`;
   // playbook rules
   if(playbooks.length) out+='PLAYBOOK RULES: '+playbooks.map(p=>`[${p.name}] entry: ${(p.entry_rules||'-').slice(0,120)} · exit: ${(p.exit_rules||'-').slice(0,80)} · risk: ${(p.risk_rules||'-').slice(0,80)}`).join(' || ')+'\n';
+  // weekly market calls
+  if(weekPairs.length){
+    out+='WEEKLY MARKET CALLS (my forecasts, most recent weeks):\n';
+    weeks.slice(0,4).forEach(w=>{
+      pairsOf(w.id).forEach(p=>{
+        out+=`${w.week_start} ${p.symbol} bias:${p.bias} outcome:${p.outcome||'pending'}${p.miss_reason?' missedBecause:'+p.miss_reason:''} expected:"${(p.expectation||'').slice(0,80)}"${p.what_happened?' happened:"'+p.what_happened.slice(0,80)+'"':''}\n`;
+      });
+    });
+  }
   // last 30 trades
   out+='LAST 30 TRADES (newest last):\n'+sorted.slice(-30).map(t=>
     `${t.closeTime.slice(0,10)} ${t.symbol} ${t.side} lots:${t.lots??'?'} P&L:$${t.profit.toFixed(2)} setup:${t.setup||'-'} emo:${t.emotion||'-'} SL:${t.sl!=null?'y':'n'}${t.notesPost?' review:"'+t.notesPost.slice(0,70)+'"':''}`
@@ -2220,6 +2285,7 @@ function renderAI(){
       <button class="rail-btn" onclick="aiQuick('risk')">🛡 Risk audit</button>
       <button class="rail-btn" onclick="aiQuick('week')">📊 Review my week</button>
       <button class="rail-btn" onclick="aiQuick('grow')">🌱 How do I grow?</button>
+      <button class="rail-btn" onclick="aiQuick('weekly')">🗓 My weekly calls</button>
       <div class="rail-label">History</div>
       <div class="ai-rail-hist" id="ai-rail-hist">${railHistHtml()}</div>
       <div style="margin-top:10px;font-size:11px;color:var(--muted)">${geminiKey?`🔑 key saved · <a style="color:var(--accent2);cursor:pointer" onclick="geminiKey='';renderAI()">change</a>`:'🔑 no key yet'}</div>
@@ -2232,6 +2298,7 @@ function renderAI(){
         <button onclick="aiQuick('risk')">🛡 Risk</button>
         <button onclick="aiQuick('week')">📊 Week</button>
         <button onclick="aiQuick('grow')">🌱 Grow</button>
+        <button onclick="aiQuick('weekly')">🗓 Weekly</button>
       </div>
       ${aiHistOpen?`<div class="ai-hist">${railHistHtml()}</div>`:''}
       ${keyCard}
@@ -2254,7 +2321,8 @@ const AI_QUICK={
   psy:"Do a deep PSYCHOLOGY check on me. Analyze my emotion tags vs results, revenge-trading pattern, discipline with notes/journaling. Be honest. End with 3 concrete psychological rules for me.",
   risk:"Do a strict RISK MANAGEMENT audit. Analyze my loss sizes vs balance, stop-loss usage, lot sizing consistency, drawdown. Tell me exactly what to change, with numbers.",
   week:"Review my recent trading like a weekly report: what worked, what didn't, my best and worst habits, and my single biggest leak. Use my real numbers.",
-  grow:"Given my stats, balance and playbook: what is the realistic path to grow this account? What should I focus on for the next 2 weeks? Be specific and honest about my weaknesses."
+  grow:"Given my stats, balance and playbook: what is the realistic path to grow this account? What should I focus on for the next 2 weeks? Be specific and honest about my weaknesses.",
+  weekly:"Review my WEEKLY MARKET CALLS with me. How accurate are my forecasts? Which biases and symbols do I read well or badly? What patterns do you see in WHY I miss (news, geopolitics, technicals)? Then discuss this week's open calls with me."
 };
 function aiQuick(k){ aiSendText(AI_QUICK[k]); }
 function aiSend(){
@@ -2318,6 +2386,287 @@ function openMoreSheet(){
 function sheetGo(v){
   document.getElementById('more-sheet').classList.remove('on');
   show(v);
+}
+
+
+/* ================= WEEKLY ANALYSIS ================= */
+let weeks=[], weekPairs=[], weeksLoaded=false, wkBias='', wkEditing=null, wkOpenHist={};
+
+function mondayOf(dt){
+  const d=new Date(dt); const off=(d.getDay()+6)%7; d.setDate(d.getDate()-off);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function fmtWeek(ws){
+  const d=new Date(ws+'T00:00:00'); const e=new Date(d); e.setDate(d.getDate()+6);
+  return d.toLocaleDateString('en',{month:'short',day:'numeric'})+' – '+e.toLocaleDateString('en',{month:'short',day:'numeric'});
+}
+async function loadWeekly(force){
+  if(weeksLoaded&&!force) return;
+  try{
+    const r1=await sb.from('weekly_analyses').select('*').eq('user_id',user.id).order('week_start',{ascending:false});
+    weeks=r1.error?[]:(r1.data||[]);
+    const r2=await sb.from('weekly_pairs').select('*').eq('user_id',user.id).order('created_at',{ascending:true});
+    weekPairs=r2.error?[]:(r2.data||[]);
+    weeksLoaded=true;
+  }catch(e){ weeksLoaded=true; }
+}
+function pairsOf(aid){ return weekPairs.filter(p=>p.analysis_id===aid); }
+const MISS_REASONS=[['news','📰 Missed news'],['geopolitics','🌍 Geopolitics'],['fundamentals','📊 Fundamentals'],['technicals','📉 Misread technicals'],['execution','🎯 Right idea, bad timing'],['other','🤷 Other']];
+const BIAS_LABEL={bullish:'🟢 BULLISH',bearish:'🔴 BEARISH',range:'↔ RANGE'};
+function biasPill(b){
+  const cls=b==='bullish'?'buy':(b==='bearish'?'sell':'none');
+  return `<span class="pill ${cls}">${BIAS_LABEL[b]||b||'—'}</span>`;
+}
+
+async function wkUrls(paths){
+  const missing=paths.filter(p=>p&&!urlCache[p]);
+  if(missing.length){
+    try{
+      const {data}=await sb.storage.from('screenshots').createSignedUrls(missing,3600);
+      (data||[]).forEach((d,i)=>{ if(d.signedUrl) urlCache[missing[i]]=d.signedUrl; });
+    }catch(e){}
+  }
+}
+function openImg(url){
+  document.getElementById('lightbox-img').src=url;
+  document.getElementById('lightbox').classList.add('on');
+}
+function shotHtml(path,label){
+  if(!path) return '';
+  const u=urlCache[path]||'';
+  return `<div class="wk-shot"><span class="lbl">${label}</span><img src="${u}" onclick="openImg('${u}')" alt="${label}"></div>`;
+}
+
+/* ---- scoreboard ---- */
+function wkScoreboardHtml(){
+  const rev=weekPairs.filter(p=>p.outcome);
+  if(!rev.length) return '';
+  const right=rev.filter(p=>p.outcome==='correct').length;
+  const partial=rev.filter(p=>p.outcome==='partial').length;
+  const acc=Math.round(right/rev.length*100);
+  const bySym={};
+  rev.forEach(p=>{ bySym[p.symbol]=bySym[p.symbol]||{n:0,r:0}; bySym[p.symbol].n++; if(p.outcome==='correct')bySym[p.symbol].r++; });
+  const symTop=Object.entries(bySym).sort((a,b)=>b[1].n-a[1].n).slice(0,4);
+  const misses={};
+  rev.filter(p=>p.miss_reason).forEach(p=>{ misses[p.miss_reason]=(misses[p.miss_reason]||0)+1; });
+  const topMiss=Object.entries(misses).sort((a,b)=>b[1]-a[1])[0];
+  return `<div class="stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
+    <div class="card"><div class="label">Forecast accuracy</div><div class="value ${acc>=50?'pos':'neg'}">${acc}%</div><div class="delta">${right}✅ ${partial}🟡 ${rev.length-right-partial}❌ of ${rev.length} calls</div></div>
+    <div class="card"><div class="label">By symbol</div><div class="delta" style="margin-top:6px;line-height:1.9">${symTop.map(([s,v])=>`<b style="color:var(--text)">${esc(s)}</b> ${Math.round(v.r/v.n*100)}% (${v.r}/${v.n})`).join('<br>')||'—'}</div></div>
+    <div class="card"><div class="label">Biggest weakness</div><div class="value" style="font-size:16px;color:var(--red)">${topMiss?(MISS_REASONS.find(m=>m[0]===topMiss[0])||['',topMiss[0]])[1]:'—'}</div><div class="delta">${topMiss?topMiss[1]+' missed calls':'no misses recorded yet'}</div></div>
+  </div>`;
+}
+
+/* ---- pair cards ---- */
+function wkPlanCard(p){
+  return `<div class="panel" style="margin-bottom:12px">
+    <h3><span class="sym">${esc(p.symbol)}</span> ${biasPill(p.bias)}
+      <span class="tag"><a style="color:var(--accent2);cursor:pointer" onclick="editWkPair('${p.id}')">✏ edit</a> · <a style="color:var(--red);cursor:pointer" onclick="delWkPair('${p.id}')">delete</a></span></h3>
+    <div style="font-size:13px;line-height:1.7;color:var(--text)">${esc(p.expectation)}</div>
+    ${p.before_shot?shotHtml(p.before_shot,'MY EXPECTATION'):`
+      <button class="btn ghost" style="margin-top:10px" onclick="wkUpload('${p.id}','before_shot')">📊 Add chart</button>`}
+  </div>`;
+}
+function wkReviewCard(p){
+  const oc=p.outcome;
+  return `<div class="panel" style="margin-bottom:12px">
+    <h3><span class="sym">${esc(p.symbol)}</span> ${biasPill(p.bias)}</h3>
+    <div style="font-size:12.5px;color:var(--muted);line-height:1.65;border-left:3px solid var(--accent);padding-left:10px;margin-bottom:8px">"${esc(p.expectation)}"</div>
+    ${shotHtml(p.before_shot,'MY EXPECTATION')}
+    <div class="flabel">Was I right?</div>
+    <div class="verdict-btns">
+      <button class="${oc==='correct'?'on-c':''}" onclick="setOutcome('${p.id}','correct')">✅ Right</button>
+      <button class="${oc==='partial'?'on-p':''}" onclick="setOutcome('${p.id}','partial')">🟡 Partial</button>
+      <button class="${oc==='wrong'?'on-w':''}" onclick="setOutcome('${p.id}','wrong')">❌ Wrong</button>
+    </div>
+    ${oc&&oc!=='correct'?`<div class="flabel">Why did we miss?</div>
+      <div class="miss-chips">${MISS_REASONS.map(([k,l])=>`<button class="${p.miss_reason===k?'on':''}" onclick="setMiss('${p.id}','${k}')">${l}</button>`).join('')}</div>`:''}
+    ${oc?`<div class="flabel">What actually happened</div>
+      <textarea id="wh-${p.id}" style="min-height:70px" placeholder="Price actually did… because…">${esc(p.what_happened)}</textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn ghost" onclick="saveWhatHappened('${p.id}')">💾 Save note</button>
+        <button class="btn ghost" onclick="wkUpload('${p.id}','after_shot')">📈 Add "what happened" chart</button>
+      </div>
+      ${p.after_shot?`<div class="wk-cmp" style="margin-top:10px">${shotHtml(p.before_shot,'EXPECTED')}${shotHtml(p.after_shot,'REALITY')}</div>`:''}`:''}
+  </div>`;
+}
+function wkHistoryCard(w){
+  const ps=pairsOf(w.id);
+  const rev=ps.filter(p=>p.outcome);
+  const right=rev.filter(p=>p.outcome==='correct').length;
+  const open=!!wkOpenHist[w.id];
+  const badge=rev.length?`<span class="wk-verdict-badge" style="background:rgba(34,196,122,.15);color:var(--green)">${right}/${rev.length} right</span>`:'<span class="chip">not reviewed</span>';
+  return `<div class="panel" style="margin-bottom:10px">
+    <h3 style="cursor:pointer;margin-bottom:${open?'12px':'0'}" onclick="wkOpenHist['${w.id}']=!wkOpenHist['${w.id}'];renderWeekly()">
+      <span>📅 ${fmtWeek(w.week_start)}</span>
+      <span style="display:flex;gap:8px;align-items:center">${ps.map(p=>`<span class="pill setup">${esc(p.symbol)}</span>`).join('')} ${badge} <span style="color:var(--muted)">${open?'▴':'▾'}</span></span>
+    </h3>
+    ${open?ps.map(p=>`
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:6px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+          <span class="sym">${esc(p.symbol)}</span> ${biasPill(p.bias)}
+          ${p.outcome==='correct'?'<span class="wk-verdict-badge" style="background:rgba(34,196,122,.18);color:var(--green)">✅ RIGHT</span>':''}
+          ${p.outcome==='partial'?'<span class="wk-verdict-badge" style="background:rgba(245,185,85,.15);color:var(--gold)">🟡 PARTIAL</span>':''}
+          ${p.outcome==='wrong'?'<span class="wk-verdict-badge" style="background:rgba(240,80,110,.15);color:var(--red)">❌ WRONG</span>':''}
+          ${p.miss_reason?`<span class="chip" style="color:var(--red)">${(MISS_REASONS.find(m=>m[0]===p.miss_reason)||['',p.miss_reason])[1]}</span>`:''}
+        </div>
+        <div style="font-size:12.5px;color:var(--muted);line-height:1.6"><b style="color:var(--text)">Expected:</b> ${esc(p.expectation)}</div>
+        ${p.what_happened?`<div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:4px"><b style="color:var(--text)">Happened:</b> ${esc(p.what_happened)}</div>`:''}
+        ${p.before_shot&&p.after_shot?`<div class="wk-cmp" style="margin-top:8px">${shotHtml(p.before_shot,'EXPECTED')}${shotHtml(p.after_shot,'REALITY')}</div>`
+          :shotHtml(p.before_shot,'EXPECTED')+shotHtml(p.after_shot,'REALITY')}
+      </div>`).join(''):''}
+  </div>`;
+}
+
+/* ---- main render ---- */
+async function renderWeekly(){
+  const el=document.getElementById('weekly-body');
+  if(!el) return;
+  el.innerHTML='<div class="panel"><div class="empty">Loading your weeks…</div></div>';
+  await loadWeekly();
+  await wkUrls(weekPairs.flatMap(p=>[p.before_shot,p.after_shot]).filter(Boolean));
+  const cm=mondayOf(new Date());
+  const current=weeks.find(w=>w.week_start===cm);
+  const pastOpen=weeks.find(w=>w.week_start<cm&&w.status==='open'&&pairsOf(w.id).length);
+  let html=wkScoreboardHtml();
+
+  if(pastOpen){
+    const ps=pairsOf(pastOpen.id);
+    const allDone=ps.every(p=>p.outcome);
+    html+=`<div class="wk-gate">
+      <b style="color:var(--gold);font-size:14px">⏳ Before planning this week — how did ${fmtWeek(pastOpen.week_start)} go?</b>
+      <div style="color:var(--muted);font-size:12.5px;margin-top:4px">Give each call a verdict. Honesty here is what makes you sharper.</div>
+    </div>`;
+    html+=ps.map(wkReviewCard).join('');
+    html+=`<button class="btn" style="width:100%;margin-bottom:18px" ${allDone?'':'disabled'} onclick="finishReview('${pastOpen.id}')">
+      ${allDone?'✓ Finish review & unlock this week':'Give every pair a verdict to finish'}</button>`;
+  }
+
+  html+=`<h3 style="font-size:15px;font-weight:800;margin:6px 0 10px">📝 This week · ${fmtWeek(cm)}</h3>`;
+  if(pastOpen&&!current){
+    html+=`<div class="panel" style="margin-bottom:14px"><div class="empty">Finish last week's review above to plan this week 🔒</div></div>`;
+  } else if(!current){
+    html+=`<div class="panel" style="margin-bottom:14px"><div class="empty">No analysis yet for this week.<br><br>
+      <button class="btn" onclick="startWeek()">📝 Plan this week</button></div></div>`;
+  } else {
+    const ps=pairsOf(current.id);
+    html+=ps.map(wkPlanCard).join('');
+    html+=`<div style="display:flex;gap:8px;margin-bottom:18px">
+      <button class="btn" onclick="openWkModal('${current.id}')">＋ Add pair</button>
+      ${ps.length?`<button class="btn ghost" onclick="show('ai');setTimeout(()=>aiQuick('weekly'),300)">✨ Discuss with Zella AI</button>`:''}
+    </div>`;
+  }
+
+  const past=weeks.filter(w=>w.week_start!==cm&&!(pastOpen&&w.id===pastOpen.id));
+  if(past.length){
+    html+=`<h3 style="font-size:15px;font-weight:800;margin:6px 0 10px">🗂 Past weeks</h3>`;
+    html+=past.map(wkHistoryCard).join('');
+  }
+  el.innerHTML=html;
+}
+
+/* ---- actions ---- */
+async function startWeek(){
+  const cm=mondayOf(new Date());
+  const {data,error}=await sb.from('weekly_analyses').insert({user_id:user.id,week_start:cm}).select('*').maybeSingle();
+  if(error){ alert(error.message); return; }
+  weeks.unshift(data);
+  renderWeekly();
+  openWkModal(data.id);
+}
+function wkSetBias(b){
+  wkBias=b;
+  document.querySelectorAll('#wk-bias-btns button').forEach(x=>{
+    x.style.borderColor=x.dataset.b===b?'var(--accent)':'var(--border)';
+    x.style.background=x.dataset.b===b?'rgba(108,92,231,.2)':'transparent';
+  });
+}
+function openWkModal(analysisId,pair){
+  wkEditing=pair?pair.id:null;
+  document.getElementById('modal-wk').dataset.aid=analysisId;
+  document.getElementById('wk-title').textContent=pair?'Edit pair':'Add a pair';
+  document.getElementById('wk-symbol').value=pair?pair.symbol:'';
+  document.getElementById('wk-exp').value=pair?pair.expectation:'';
+  document.getElementById('wk-file').value='';
+  document.getElementById('wk-file-name').textContent='';
+  wkSetBias(pair?pair.bias:'');
+  document.getElementById('modal-wk').classList.add('on');
+}
+function editWkPair(id){
+  const p=weekPairs.find(x=>x.id===id); if(!p) return;
+  openWkModal(p.analysis_id,p);
+}
+async function saveWkPair(){
+  const sym=document.getElementById('wk-symbol').value.trim().toUpperCase();
+  const exp=document.getElementById('wk-exp').value.trim();
+  if(!sym||!wkBias||!exp){ alert('Symbol, bias and expectation are required.'); return; }
+  const aid=document.getElementById('modal-wk').dataset.aid;
+  let row;
+  if(wkEditing){
+    const {error}=await sb.from('weekly_pairs').update({symbol:sym,bias:wkBias,expectation:exp}).eq('id',wkEditing);
+    if(error){ alert(error.message); return; }
+    row=weekPairs.find(x=>x.id===wkEditing);
+    Object.assign(row,{symbol:sym,bias:wkBias,expectation:exp});
+  }else{
+    const {data,error}=await sb.from('weekly_pairs').insert({user_id:user.id,analysis_id:aid,symbol:sym,bias:wkBias,expectation:exp}).select('*').maybeSingle();
+    if(error){ alert(error.message); return; }
+    row=data; weekPairs.push(data);
+  }
+  const f=document.getElementById('wk-file').files[0];
+  document.getElementById('modal-wk').classList.remove('on');
+  if(f&&row){ await wkDoUpload(row.id,'before_shot',f); }
+  renderWeekly();
+}
+async function delWkPair(id){
+  if(!confirm('Delete this pair analysis?')) return;
+  const p=weekPairs.find(x=>x.id===id);
+  const paths=[p&&p.before_shot,p&&p.after_shot].filter(Boolean);
+  if(paths.length){ try{ await sb.storage.from('screenshots').remove(paths); }catch(e){} }
+  await sb.from('weekly_pairs').delete().eq('id',id);
+  weekPairs=weekPairs.filter(x=>x.id!==id);
+  renderWeekly();
+}
+function wkUpload(pairId,kind){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='image/*';
+  inp.onchange=async()=>{ if(inp.files[0]){ await wkDoUpload(pairId,kind,inp.files[0]); renderWeekly(); } };
+  inp.click();
+}
+async function wkDoUpload(pairId,kind,file){
+  const blob=await compress(file);
+  const path=`${user.id}/weekly/${pairId}_${kind}_${Date.now()}.jpg`;
+  const {error}=await sb.storage.from('screenshots').upload(path,blob,{contentType:'image/jpeg'});
+  if(error){ alert('Upload failed: '+error.message); return; }
+  const upd={}; upd[kind]=path;
+  await sb.from('weekly_pairs').update(upd).eq('id',pairId);
+  const p=weekPairs.find(x=>x.id===pairId);
+  if(p) p[kind]=path;
+  await wkUrls([path]);
+}
+async function setOutcome(id,oc){
+  const p=weekPairs.find(x=>x.id===id); if(!p) return;
+  p.outcome=oc;
+  if(oc==='correct') p.miss_reason='';
+  await sb.from('weekly_pairs').update({outcome:oc,miss_reason:p.miss_reason}).eq('id',id);
+  renderWeekly();
+}
+async function setMiss(id,k){
+  const p=weekPairs.find(x=>x.id===id); if(!p) return;
+  p.miss_reason=p.miss_reason===k?'':k;
+  await sb.from('weekly_pairs').update({miss_reason:p.miss_reason}).eq('id',id);
+  renderWeekly();
+}
+async function saveWhatHappened(id){
+  const p=weekPairs.find(x=>x.id===id); if(!p) return;
+  const v=document.getElementById('wh-'+id).value;
+  p.what_happened=v;
+  await sb.from('weekly_pairs').update({what_happened:v}).eq('id',id);
+}
+async function finishReview(aid){
+  await sb.from('weekly_analyses').update({status:'reviewed'}).eq('id',aid);
+  const w=weeks.find(x=>x.id===aid);
+  if(w) w.status='reviewed';
+  renderWeekly();
 }
 
 /* ================= RATINGS ================= */

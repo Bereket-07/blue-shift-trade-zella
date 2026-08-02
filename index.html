@@ -293,12 +293,6 @@
   .ai-hist-item .d{color:var(--muted);font-size:10.5px;white-space:nowrap}
   .ai-hist-item .x{color:var(--muted);padding:0 4px}
   .ai-hist-item .x:hover{color:var(--red)}
-  .orders-card{background:linear-gradient(120deg,rgba(240,80,110,.12),rgba(108,92,231,.1));border:1px solid rgba(240,80,110,.4);border-radius:14px;padding:14px 16px;margin-bottom:16px}
-  .orders-card h3{font-size:13px;font-weight:800;margin-bottom:10px;color:var(--red)}
-  .order-item{display:flex;gap:10px;align-items:flex-start;padding:6px 0;font-size:13px;line-height:1.5;cursor:pointer}
-  .order-item .cb{width:20px;height:20px;border-radius:6px;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;margin-top:1px}
-  .order-item.done .cb{background:var(--green);border-color:var(--green);color:#06281c;font-weight:800}
-  .order-item.done span{opacity:.55;text-decoration:line-through}
   #ai-chat{flex:1;min-height:180px;overflow-y:auto;padding-right:6px;scroll-behavior:smooth}
   #ai-chat::-webkit-scrollbar{width:6px}
   #ai-chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -312,6 +306,31 @@
   .ai-dots i:nth-child(2){animation-delay:.18s}
   .ai-dots i:nth-child(3){animation-delay:.36s}
   @keyframes aidot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-6px);opacity:1}}
+
+  /* vision & calm */
+  .calm{display:flex;align-items:center;gap:10px;background:linear-gradient(120deg,rgba(56,189,248,.07),rgba(108,92,231,.05));border:1px solid var(--border);border-radius:12px;padding:9px 14px;margin-bottom:14px;font-size:12.5px;color:var(--muted);font-style:italic}
+  .calm b{color:var(--accent2);font-style:normal;font-weight:700}
+  .vision-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(108,92,231,.20),rgba(56,189,248,.10) 55%,transparent);border:1px solid var(--border);border-radius:22px;padding:34px 28px;margin-bottom:16px;text-align:center}
+  .vision-hero .motto{font-size:40px;font-weight:800;letter-spacing:5px;background:linear-gradient(90deg,var(--accent2),#38bdf8);-webkit-background-clip:text;background-clip:text;color:transparent;animation:mfade 6s ease-in-out infinite}
+  .vision-hero .mline{color:var(--text);font-size:15px;margin-top:10px;opacity:.92;animation:mfade 6s ease-in-out infinite}
+  @keyframes mfade{0%,12%{opacity:0;transform:translateY(6px)}22%,80%{opacity:1;transform:none}94%,100%{opacity:0;transform:translateY(-6px)}}
+  .vision-hero .verse{margin-top:20px;color:var(--muted);font-size:12.5px;font-style:italic;line-height:1.7}
+  .motto-strip{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+  .motto-strip span{font-size:10.5px;letter-spacing:2px;font-weight:800;color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:5px 13px}
+  .motto-strip span.on{color:var(--accent2);border-color:var(--accent)}
+  .goal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+  .goal-card{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:18px;position:relative;overflow:hidden}
+  .goal-card::before{content:'';position:absolute;inset:0 auto 0 0;width:3px;background:linear-gradient(180deg,var(--accent),#38bdf8)}
+  .goal-h{font-size:10.5px;letter-spacing:1.4px;font-weight:800;color:var(--accent2);text-transform:uppercase}
+  .goal-t{font-size:17px;font-weight:800;margin:6px 0 3px}
+  .goal-meta{color:var(--muted);font-size:11.5px}
+  .goal-bar{height:8px;border-radius:4px;background:var(--panel2);overflow:hidden;margin:12px 0 6px}
+  .goal-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),#38bdf8)}
+  .goal-why{color:var(--muted);font-size:12px;font-style:italic;line-height:1.6;margin-top:8px;border-left:2px solid var(--border);padding-left:9px}
+  .step{display:flex;gap:9px;align-items:flex-start;padding:6px 0;font-size:12.5px;line-height:1.55;cursor:pointer}
+  .step .cb{width:18px;height:18px;border-radius:5px;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;margin-top:2px}
+  .step.done .cb{background:var(--green);border-color:var(--green);color:#06281c;font-weight:800}
+  .step.done span{opacity:.5;text-decoration:line-through}
 
   /* weekly analysis */
   .wk-shot{position:relative;margin-top:10px}
@@ -382,7 +401,7 @@
     .ai-inputbar .send{width:46px;height:46px}
     .ai-hist{max-height:45%}
     .sidebar .acct-switch{display:none}
-    .sidebar .nav-item[data-v="playbook"],.sidebar .nav-item[data-v="account"],.sidebar .nav-item[data-v="import"],.sidebar .nav-item[data-v="weekly"],#nav-admin{display:none!important}
+    .sidebar .nav-item[data-v="playbook"],.sidebar .nav-item[data-v="account"],.sidebar .nav-item[data-v="import"],.sidebar .nav-item[data-v="weekly"],.sidebar .nav-item[data-v="vision"],#nav-admin{display:none!important}
     .nav-more{display:flex}
     .main{margin-left:0;padding:14px;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
     .main .topbar{padding-right:56px}
@@ -454,6 +473,9 @@
     <div class="nav-item" data-v="weekly" onclick="show('weekly')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 6-8"/><path d="M14 7h4v4"/><path d="M3 21h18"/></svg>
       Weekly</div>
+    <div class="nav-item" data-v="vision" onclick="show('vision')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3l2.2 5.3 5.8.5-4.4 3.8 1.3 5.6L12 15.3 7.1 18.2l1.3-5.6L4 8.8l5.8-.5z"/></svg>
+      Vision</div>
     <div class="nav-item" data-v="playbook" onclick="show('playbook')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
       Playbook</div>
@@ -498,7 +520,7 @@
         </div>
       </div>
       <div id="ai-headline"></div>
-      <div id="ai-orders"></div>
+      <div id="calm-note"></div>
       <div id="dash-body"></div>
     </div>
 
@@ -551,6 +573,11 @@
     <div class="views" id="view-detail">
       <span class="back" onclick="show('journal')">← Back to journal</span>
       <div id="detail-body"></div>
+    </div>
+
+    <!-- VISION -->
+    <div class="views" id="view-vision">
+      <div id="vision-body"></div>
     </div>
 
     <!-- WEEKLY ANALYSIS -->
@@ -619,6 +646,7 @@
     <div class="sheet-grab"></div>
     <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Trading account</div>
     <select class="acct-switch" onchange="switchAccount(this.value)" style="margin-bottom:14px"></select>
+    <div class="sheet-item" onclick="sheetGo('vision')">✧ <span>Vision & goals</span></div>
     <div class="sheet-item" onclick="sheetGo('weekly')">🗓 <span>Weekly analysis</span></div>
     <div class="sheet-item" onclick="sheetGo('playbook')">📖 <span>Playbook</span></div>
     <div class="sheet-item" onclick="sheetGo('account')">💳 <span>Account history</span></div>
@@ -713,13 +741,22 @@
   </div>
 </div>
 
-<!-- MANAGER'S ORDERS MODAL -->
-<div class="modal" id="modal-orders">
-  <div class="modal-card" style="max-width:480px">
-    <h2>📋 Your manager has orders <button class="x" onclick="document.getElementById('modal-orders').classList.remove('on')">✕</button></h2>
-    <div style="color:var(--muted);font-size:12.5px;margin-bottom:10px">Generated from your own statements — non-negotiable for today.</div>
-    <div id="orders-modal-list"></div>
-    <div class="modal-foot"><button class="btn" onclick="document.getElementById('modal-orders').classList.remove('on')">💪 Understood</button></div>
+<!-- VISION GOAL MODAL -->
+<div class="modal" id="modal-goal">
+  <div class="modal-card" style="max-width:520px">
+    <h2><span id="goal-title">Set your goal</span> <button class="x" onclick="document.getElementById('modal-goal').classList.remove('on')">✕</button></h2>
+    <div class="flabel" style="margin-top:0">What do you want to be true by then?</div>
+    <input type="text" id="goal-name" placeholder="e.g. Account at $50,000 · trading full-time">
+    <div class="form-grid" style="margin-top:10px">
+      <div><div class="flabel" style="margin-top:0">Target balance ($)</div><input type="number" step="any" id="goal-amt" placeholder="50000"></div>
+      <div><div class="flabel" style="margin-top:0">Target date</div><input type="text" id="goal-date" placeholder="Dec 2026"></div>
+    </div>
+    <div class="flabel">Why does this matter to you?</div>
+    <textarea id="goal-why" style="min-height:70px" placeholder="So my family never worries about money, and I can give freely…"></textarea>
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="document.getElementById('modal-goal').classList.remove('on')">Cancel</button>
+      <button class="btn" onclick="saveGoal()">Save goal</button>
+    </div>
   </div>
 </div>
 
@@ -805,7 +842,7 @@ async function googleLogin(){
   const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});
   if(error) authMsg(error.message);
 }
-async function signOut(){ await sb.auth.signOut(); trades=[]; txs=[]; accounts=[]; currentAccount=null; geminiKey=''; aiMsgs=[]; aiChats=[]; currentChatId=null; aiChatsLoaded=false; ordersRow=null; weeks=[]; weekPairs=[]; weeksLoaded=false; }
+async function signOut(){ await sb.auth.signOut(); trades=[]; txs=[]; accounts=[]; currentAccount=null; geminiKey=''; aiMsgs=[]; aiChats=[]; currentChatId=null; aiChatsLoaded=false; weeks=[]; weekPairs=[]; weeksLoaded=false; goals=[]; goalsLoaded=false; visionEq=null; }
 
 function setUser(u){
   const changed = (u&&u.id)!==(user&&user.id);
@@ -933,7 +970,7 @@ async function loadTrades(){
   txs = r2.error ? [] : (r2.data||[]).map(r=>({id:r.id,time:r.time,label:r.label||'',amount:+r.amount}));
   const r3=await sb.from('playbooks').select('*').eq('user_id',user.id).order('created_at',{ascending:true});
   playbooks = r3.error ? [] : (r3.data||[]);
-  loadWeekly();
+  loadWeekly(); loadGoals();
   show(loadTrades._view||'dashboard');
   loadTrades._view=null;
 }
@@ -982,6 +1019,7 @@ function show(v){
   if(v==='admin') renderAdmin();
   if(v==='ai') renderAI();
   if(v==='weekly') renderWeekly();
+  if(v==='vision') renderVision();
 }
 function openDetail(id){ detailId=id; renderDetail();
   document.querySelectorAll('.views').forEach(x=>x.classList.remove('active'));
@@ -1310,7 +1348,7 @@ function renderDash(){
   </div>`;
   renderMiniCal();
   updateHeadline();
-  ensureOrders();
+  renderCalmNote();
 }
 
 /* ================= CALENDARS ================= */
@@ -1997,7 +2035,7 @@ async function loadSample(){
 
 
 /* ================= ZELLA AI ================= */
-let geminiKey='', aiMsgs=[], aiBusy=false, aiChats=[], currentChatId=null, aiHistOpen=false, aiChatsLoaded=false, ordersRow=null;
+let geminiKey='', aiMsgs=[], aiBusy=false, aiChats=[], currentChatId=null, aiHistOpen=false, aiChatsLoaded=false;
 
 async function loadSecrets(){
   try{
@@ -2046,6 +2084,8 @@ function aiDataContext(){
   if(maxDay) out+=`Busiest day: ${maxDay[0]} with ${maxDay[1]} trades · avg ${(trades.length/Math.max(Object.keys(perDay).length,1)).toFixed(1)} trades/day\n`;
   // playbook rules
   if(playbooks.length) out+='PLAYBOOK RULES: '+playbooks.map(p=>`[${p.name}] entry: ${(p.entry_rules||'-').slice(0,120)} · exit: ${(p.exit_rules||'-').slice(0,80)} · risk: ${(p.risk_rules||'-').slice(0,80)}`).join(' || ')+'\n';
+  // long-term vision
+  if(goals.length) out+='VISION GOALS: '+goals.map(g=>`${g.horizon}: ${g.title}${g.target_amount?' ($'+g.target_amount+')':''}`).join(' | ')+'\n';
   // weekly market calls
   if(weekPairs.length){
     out+='WEEKLY MARKET CALLS (my forecasts, most recent weeks):\n';
@@ -2186,65 +2226,6 @@ async function persistChat(){
       if(c){ c.updated_at=now; aiChats=[c,...aiChats.filter(x=>x.id!==currentChatId)]; }
     }
   }catch(e){}
-}
-
-/* ---- Manager's Orders: daily directives without being asked ---- */
-async function ensureOrders(){
-  const el=document.getElementById('ai-orders');
-  if(!el) return;
-  if(!trades.length||!geminiKey){ el.innerHTML=''; return; }
-  const today=Repo_today();
-  if(ordersRow&&ordersRow.date===today){ renderOrders(); return; }
-  try{
-    const {data}=await sb.from('ai_orders').select('*').eq('user_id',user.id).eq('date',today).maybeSingle();
-    if(data){ ordersRow=data; renderOrders(); maybePopOrders(); return; }
-  }catch(e){ el.innerHTML=''; return; }
-  // generate fresh orders from the statements
-  const raw=await gemini([{role:'user',text:'You are my strict trading MANAGER. From my data, issue TODAY\'S NON-NEGOTIABLE ORDERS: 3 to 5 short imperative commands (max 14 words each) attacking my current worst risk and psychology problems. Output ONLY a JSON array of strings, nothing else. Example: ["No trade without a stop loss","Maximum 2 trades today"]'}]);
-  let list=[];
-  try{
-    const m=raw.match(/\[[\s\S]*\]/);
-    if(m) list=JSON.parse(m[0]).filter(x=>typeof x==='string').slice(0,5);
-  }catch(e){}
-  if(!list.length){ el.innerHTML=''; return; }
-  const orders=list.map(t=>({t,done:false}));
-  try{
-    const {data}=await sb.from('ai_orders').insert({user_id:user.id,date:today,orders}).select('*').maybeSingle();
-    ordersRow=data||{date:today,orders};
-  }catch(e){ ordersRow={date:today,orders}; }
-  renderOrders(); maybePopOrders();
-}
-function ordersListHtml(){
-  return ordersRow.orders.map((o,i)=>`
-    <div class="order-item ${o.done?'done':''}" onclick="toggleOrder(${i})">
-      <div class="cb">${o.done?'✓':''}</div><span>${esc(o.t)}</span>
-    </div>`).join('');
-}
-function renderOrders(){
-  const el=document.getElementById('ai-orders');
-  if(!el||!ordersRow||!ordersRow.orders.length){ if(el) el.innerHTML=''; return; }
-  const done=ordersRow.orders.filter(o=>o.done).length;
-  el.innerHTML=`<div class="orders-card">
-    <h3>📋 MANAGER'S ORDERS — TODAY <span style="float:right;color:var(--muted);font-weight:600">${done}/${ordersRow.orders.length}</span></h3>
-    ${ordersListHtml()}
-  </div>`;
-}
-async function toggleOrder(i){
-  if(!ordersRow) return;
-  ordersRow.orders[i].done=!ordersRow.orders[i].done;
-  renderOrders();
-  const ml=document.getElementById('orders-modal-list');
-  if(ml&&document.getElementById('modal-orders').classList.contains('on')) ml.innerHTML=ordersListHtml();
-  if(ordersRow.id){ try{ await sb.from('ai_orders').update({orders:ordersRow.orders}).eq('id',ordersRow.id); }catch(e){} }
-}
-function maybePopOrders(){
-  if(!ordersRow||!ordersRow.orders.length) return;
-  const k='zb_orders_pop_'+user.id;
-  let seen=null; try{ seen=localStorage.getItem(k); }catch(e){}
-  if(seen===ordersRow.date) return;
-  try{ localStorage.setItem(k,ordersRow.date); }catch(e){}
-  document.getElementById('orders-modal-list').innerHTML=ordersListHtml();
-  document.getElementById('modal-orders').classList.add('on');
 }
 
 /* ---- AI page ---- */
@@ -2388,6 +2369,199 @@ function sheetGo(v){
   show(v);
 }
 
+
+
+/* ================= VISION & CALM ================= */
+const MOTTOS=[
+  ['FAITH','The outcome belongs to God. The obedience belongs to me.'],
+  ['DISCIPLINE','I follow the plan on the boring days too.'],
+  ['PATIENCE','There is always another setup. I can wait.'],
+  ['STILLNESS','A calm mind sees what a rushed one misses.'],
+  ['HUMILITY','The market owes me nothing. I stay teachable.'],
+  ['GRATITUDE','What I hold today, I once prayed for.']
+];
+const CALM_LINES=[
+  'There is always another trade. The market opens again tomorrow.',
+  'Missing a setup costs nothing. Forcing one costs everything.',
+  'Slow is smooth. Smooth is profitable.',
+  'Protect the capital first — opportunity will keep coming.',
+  'You are not behind. You are being prepared.',
+  'Peace is a position too. It is fine to hold cash today.',
+  'Trade the plan you wrote in a calm mind, not the feeling you have now.'
+];
+function renderCalmNote(){
+  const el=document.getElementById('calm-note'); if(!el) return;
+  const i=Math.floor(Date.now()/(1000*60*60*6))%CALM_LINES.length;
+  el.innerHTML=`<div class="calm">🕊 <span><b>Breathe.</b> ${esc(CALM_LINES[i])}</span></div>`;
+}
+
+const HORIZONS=[
+  ['month','This Month'],['quarter','This Quarter'],['half','Next 6 Months'],
+  ['year','This Year'],['five','5 Year Vision']
+];
+let goals=[], goalsLoaded=false, visionEq=null, mottoIdx=0, mottoTimer=null;
+
+async function loadGoals(force){
+  if(goalsLoaded&&!force) return;
+  try{
+    const {data}=await sb.from('vision_goals').select('*').eq('user_id',user.id);
+    goals=data||[]; goalsLoaded=true;
+  }catch(e){ goalsLoaded=true; }
+}
+/* total equity across ALL accounts (vision is global) */
+async function loadVisionEquity(){
+  try{
+    const t=await sb.from('trades').select('profit').eq('user_id',user.id);
+    const x=await sb.from('transactions').select('amount').eq('user_id',user.id);
+    const p=(t.data||[]).reduce((a,r)=>a+ +r.profit,0);
+    const d=(x.data||[]).reduce((a,r)=>a+ +r.amount,0);
+    visionEq=p+d;
+  }catch(e){ visionEq=txs.reduce((a,t)=>a+t.amount,0)+trades.reduce((a,t)=>a+t.profit,0); }
+}
+function goalOf(h){ return goals.find(g=>g.horizon===h); }
+
+function goalCardHtml(hk,hlabel){
+  const g=goalOf(hk);
+  if(!g) return `<div class="goal-card">
+    <div class="goal-h">${hlabel}</div>
+    <div class="goal-t" style="color:var(--muted);font-weight:600;font-size:14px">Not set yet</div>
+    <div class="goal-meta">Name what you want to be true by then.</div>
+    <button class="btn ghost" style="margin-top:12px" onclick="openGoal('${hk}')">＋ Set this goal</button>
+  </div>`;
+  const tgt=+g.target_amount||0;
+  const pct=tgt>0?Math.max(0,Math.min(100,Math.round((visionEq||0)/tgt*100))):null;
+  const steps=g.steps||[];
+  const done=steps.filter(x=>x.done).length;
+  return `<div class="goal-card">
+    <div class="goal-h">${hlabel}${g.target_date?' · '+esc(g.target_date):''}</div>
+    <div class="goal-t">${esc(g.title||'—')}</div>
+    ${tgt>0?`<div class="goal-meta">${money(visionEq||0)} of ${money(tgt,0)} · <b style="color:var(--text)">${pct}%</b></div>
+      <div class="goal-bar"><i style="width:${pct}%"></i></div>`:''}
+    ${g.why?`<div class="goal-why">${esc(g.why)}</div>`:''}
+    ${steps.length?`<div class="flabel">Steps ${done}/${steps.length}</div>
+      ${steps.map((st,i)=>`<div class="step ${st.done?'done':''}" onclick="toggleStep('${g.id}',${i})">
+        <div class="cb">${st.done?'✓':''}</div><span>${esc(st.t)}</span></div>`).join('')}`:''}
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="openGoal('${hk}')">✏ Edit</button>
+      <button class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="aiPlanGoal('${hk}')">✨ ${steps.length?'Re-plan':'Plan'} with AI</button>
+      <button class="btn danger" style="padding:6px 12px;font-size:12px" onclick="delGoal('${g.id}')">Delete</button>
+    </div>
+    <div id="gp-${hk}"></div>
+  </div>`;
+}
+
+async function renderVision(){
+  const el=document.getElementById('vision-body'); if(!el) return;
+  el.innerHTML='<div class="panel"><div class="empty">Preparing your vision…</div></div>';
+  await loadGoals();
+  if(visionEq===null) await loadVisionEquity();
+  const m=MOTTOS[mottoIdx%MOTTOS.length];
+  el.innerHTML=`
+  <div class="vision-hero">
+    <div class="motto" id="motto-word">${m[0]}</div>
+    <div class="mline" id="motto-line">${esc(m[1])}</div>
+    <div class="motto-strip">${MOTTOS.map((x,i)=>`<span class="${i===mottoIdx%MOTTOS.length?'on':''}">${x[0]}</span>`).join('')}</div>
+    <div class="verse">“Unless the Lord builds the house, the builders labor in vain.” — Psalm 127:1<br>
+      Do the work faithfully. Leave the increase to God.</div>
+  </div>
+  <div class="calm" style="margin-bottom:16px">🕊 <span><b>Today's reminder.</b> ${esc(CALM_LINES[Math.floor(Date.now()/(1000*60*60*6))%CALM_LINES.length])}</span></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+    <div><h1 style="font-size:20px;font-weight:800">Your journey</h1>
+      <div style="color:var(--muted);font-size:12.5px">Total across all accounts: <b style="color:var(--text)">${money(visionEq||0)}</b></div></div>
+    <button class="btn" onclick="aiPlanAll()">✨ Build my whole plan with AI</button>
+  </div>
+  <div id="vision-allplan"></div>
+  <div class="goal-grid">${HORIZONS.map(([k,l])=>goalCardHtml(k,l)).join('')}</div>`;
+  clearInterval(mottoTimer);
+  mottoTimer=setInterval(()=>{
+    if(!document.getElementById('view-vision').classList.contains('active')) return;
+    mottoIdx++;
+    const mm=MOTTOS[mottoIdx%MOTTOS.length];
+    const w=document.getElementById('motto-word'), l=document.getElementById('motto-line');
+    if(!w) return;
+    w.textContent=mm[0]; l.textContent=mm[1];
+    w.style.animation='none'; l.style.animation='none';
+    void w.offsetWidth;
+    w.style.animation=''; l.style.animation='';
+    document.querySelectorAll('.motto-strip span').forEach((sp,i)=>sp.classList.toggle('on',i===mottoIdx%MOTTOS.length));
+  },6000);
+}
+
+function openGoal(hk){
+  const g=goalOf(hk);
+  document.getElementById('modal-goal').dataset.h=hk;
+  document.getElementById('goal-title').textContent=(HORIZONS.find(x=>x[0]===hk)||['',''])[1];
+  document.getElementById('goal-name').value=g?g.title:'';
+  document.getElementById('goal-amt').value=g&&g.target_amount?g.target_amount:'';
+  document.getElementById('goal-date').value=g?g.target_date:'';
+  document.getElementById('goal-why').value=g?g.why:'';
+  document.getElementById('modal-goal').classList.add('on');
+}
+async function saveGoal(){
+  const hk=document.getElementById('modal-goal').dataset.h;
+  const title=document.getElementById('goal-name').value.trim();
+  if(!title){ alert('Give your goal a name.'); return; }
+  const amtRaw=parseNum(document.getElementById('goal-amt').value);
+  const row={user_id:user.id,horizon:hk,title,
+    target_amount:isNaN(amtRaw)?null:amtRaw,
+    target_date:document.getElementById('goal-date').value.trim(),
+    why:document.getElementById('goal-why').value.trim()};
+  const g=goalOf(hk);
+  if(g){
+    const {error}=await sb.from('vision_goals').update(row).eq('id',g.id);
+    if(error){ alert(error.message); return; }
+    Object.assign(g,row);
+  }else{
+    const {data,error}=await sb.from('vision_goals').insert(row).select('*').maybeSingle();
+    if(error){ alert(error.message+'\n\nDid you run the Vision SQL?'); return; }
+    goals.push(data);
+  }
+  document.getElementById('modal-goal').classList.remove('on');
+  renderVision();
+}
+async function delGoal(id){
+  if(!confirm('Delete this goal?')) return;
+  await sb.from('vision_goals').delete().eq('id',id);
+  goals=goals.filter(g=>g.id!==id);
+  renderVision();
+}
+async function toggleStep(id,i){
+  const g=goals.find(x=>x.id===id); if(!g) return;
+  g.steps=g.steps||[];
+  g.steps[i].done=!g.steps[i].done;
+  renderVision();
+  try{ await sb.from('vision_goals').update({steps:g.steps}).eq('id',id); }catch(e){}
+}
+function visionContext(){
+  const s=computeStats(trades);
+  return `Total equity across accounts: $${(visionEq||0).toFixed(2)}. Stats: ${s.n} trades, win rate ${s.winRate.toFixed(0)}%, profit factor ${s.profitFactor>=99?'inf':s.profitFactor.toFixed(2)}, avg win $${s.avgWin.toFixed(0)}, avg loss $${s.avgLoss.toFixed(0)}.\n`+
+    'My goals: '+HORIZONS.map(([k,l])=>{const g=goalOf(k);return g?`${l}: ${g.title}${g.target_amount?' ($'+g.target_amount+')':''}${g.target_date?' by '+g.target_date:''}${g.why?' — why: '+g.why:''}`:null;}).filter(Boolean).join(' | ');
+}
+async function aiPlanGoal(hk){
+  const g=goalOf(hk); if(!g) return;
+  const box=document.getElementById('gp-'+hk);
+  if(!geminiKey){ box.innerHTML='<div class="calm" style="margin-top:10px">Add your free Gemini key in the ✨ Zella AI tab to plan with AI.</div>'; return; }
+  box.innerHTML='<div class="ai-think">Praying over the numbers and building your steps…</div>';
+  const label=(HORIZONS.find(x=>x[0]===hk)||['',''])[1];
+  const prompt=`${visionContext()}\n\nBuild my action plan for "${label}" — goal: ${g.title}${g.target_amount?' (target $'+g.target_amount+')':''}.\nGive 4-6 SHORT concrete steps (max 12 words each) that are realistic for MY current numbers, focused on process and risk, not luck. Faith-friendly, calm tone. Output ONLY a JSON array of strings.`;
+  const raw=await gemini([{role:'user',text:prompt}]);
+  let list=[];
+  try{ const mm=raw.match(/\[[\s\S]*\]/); if(mm) list=JSON.parse(mm[0]).filter(x=>typeof x==='string').slice(0,6); }catch(e){}
+  if(!list.length){ box.innerHTML=`<div class="calm" style="margin-top:10px">${esc(raw.slice(0,180))}</div>`; return; }
+  g.steps=list.map(t=>({t,done:false}));
+  try{ await sb.from('vision_goals').update({steps:g.steps}).eq('id',g.id); }catch(e){}
+  renderVision();
+}
+async function aiPlanAll(){
+  const box=document.getElementById('vision-allplan');
+  if(!geminiKey){ box.innerHTML='<div class="calm">Add your free Gemini key in the ✨ Zella AI tab first.</div>'; return; }
+  const set=HORIZONS.filter(([k])=>goalOf(k));
+  if(!set.length){ box.innerHTML='<div class="calm">Set at least one goal first — then I can build the road to it.</div>'; return; }
+  box.innerHTML='<div class="ai-think">Building your road — month by month…</div>';
+  const prompt=`${visionContext()}\n\nWrite my personal roadmap connecting these horizons. For each goal I set, give 3-5 short steps. Be realistic about my current balance and win rate — show the monthly return needed and whether it is sane. Calm, faith-friendly, encouraging but honest. Use markdown headings per horizon.`;
+  const reply=await gemini([{role:'user',text:prompt}]);
+  box.innerHTML=`<div class="panel" style="margin-bottom:14px"><h3>✨ Your roadmap</h3><div class="ai-msg model" style="max-width:100%;border:none;padding:0;background:transparent">${mdRich(reply)}</div></div>`;
+}
 
 /* ================= WEEKLY ANALYSIS ================= */
 let weeks=[], weekPairs=[], weeksLoaded=false, wkBias='', wkEditing=null, wkOpenHist={};

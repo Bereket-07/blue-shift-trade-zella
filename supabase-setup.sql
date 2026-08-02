@@ -419,6 +419,31 @@ create policy "own wp update" on public.weekly_pairs for update using (auth.uid(
 drop policy if exists "own wp delete" on public.weekly_pairs;
 create policy "own wp delete" on public.weekly_pairs for delete using (auth.uid() = user_id);
 
+-- ============================================================
+-- 12. VISION — long-horizon goals (shared across all accounts)
+-- ============================================================
+create table if not exists public.vision_goals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  horizon text not null,
+  title text default '',
+  target_amount numeric,
+  target_date text default '',
+  why text default '',
+  steps jsonb default '[]'::jsonb,
+  created_at timestamptz default now(),
+  unique (user_id, horizon)
+);
+alter table public.vision_goals enable row level security;
+drop policy if exists "own vg select" on public.vision_goals;
+create policy "own vg select" on public.vision_goals for select using (auth.uid() = user_id);
+drop policy if exists "own vg insert" on public.vision_goals;
+create policy "own vg insert" on public.vision_goals for insert with check (auth.uid() = user_id);
+drop policy if exists "own vg update" on public.vision_goals;
+create policy "own vg update" on public.vision_goals for update using (auth.uid() = user_id);
+drop policy if exists "own vg delete" on public.vision_goals;
+create policy "own vg delete" on public.vision_goals for delete using (auth.uid() = user_id);
+
 -- 7. MAKE YOURSELF ADMIN (edit the email, run after logging in once)
 -- ============================================================
 update public.profiles set is_admin = true

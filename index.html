@@ -307,6 +307,21 @@
   .ai-dots i:nth-child(3){animation-delay:.36s}
   @keyframes aidot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-6px);opacity:1}}
 
+  /* prop firm challenge */
+  .chal{background:linear-gradient(120deg,rgba(108,92,231,.14),rgba(56,189,248,.07));border:1px solid rgba(108,92,231,.4);border-radius:18px;padding:18px;margin-bottom:14px}
+  .chal h3{font-size:14px;font-weight:800;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  .phase-track{display:flex;align-items:center;gap:6px;margin:14px 0}
+  .phase-node{flex:1;text-align:center;padding:9px 4px;border-radius:12px;background:var(--panel2);border:1px solid var(--border);font-size:11.5px;font-weight:700;color:var(--muted)}
+  .phase-node.on{background:rgba(108,92,231,.25);border-color:var(--accent);color:var(--text)}
+  .phase-node.done{background:rgba(34,196,122,.18);border-color:var(--green);color:var(--green)}
+  .phase-arrow{color:var(--muted);font-size:13px}
+  .chal-bar{height:10px;border-radius:5px;background:var(--panel2);overflow:hidden;margin:6px 0 3px}
+  .chal-bar i{display:block;height:100%;border-radius:5px}
+  .chal-row{margin-bottom:12px}
+  .chal-row .lab{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:2px}
+  .chal-row .lab b{color:var(--text)}
+  .acct-badge{font-size:10px;font-weight:800;letter-spacing:.5px;padding:3px 9px;border-radius:12px}
+
   /* vision & calm */
   .calm{display:flex;align-items:center;gap:10px;background:linear-gradient(120deg,rgba(56,189,248,.07),rgba(108,92,231,.05));border:1px solid var(--border);border-radius:12px;padding:9px 14px;margin-bottom:14px;font-size:12.5px;color:var(--muted);font-style:italic}
   .calm b{color:var(--accent2);font-style:normal;font-weight:700}
@@ -553,10 +568,11 @@
         <div class="top-right">
           <button class="btn dep" onclick="openTxModal('1')">💰 Deposit</button>
           <button class="btn wd" onclick="openTxModal('-1')">📤 Withdraw</button>
-          <button class="btn ghost" onclick="renameAccount()">✏ Rename</button>
+          <button class="btn ghost" onclick="editAccount()">✏ Edit account</button>
           <button class="btn danger" onclick="deleteAccount()">🗑 Delete account</button>
         </div>
       </div>
+      <div id="challenge-card"></div>
       <div class="panel scroll-x" id="account-body"></div>
     </div>
 
@@ -741,6 +757,44 @@
   </div>
 </div>
 
+<!-- NEW / EDIT ACCOUNT MODAL -->
+<div class="modal" id="modal-acct">
+  <div class="modal-card" style="max-width:520px">
+    <h2><span id="acct-title">New trading account</span> <button class="x" onclick="closeAcctModal()">✕</button></h2>
+    <div class="flabel" style="margin-top:0">Account name *</div>
+    <input type="text" id="ac-name" placeholder="e.g. FTMO 100k · Phase 1">
+    <div class="flabel">What kind of account is this?</div>
+    <div id="ac-kind-btns" style="display:flex;gap:8px">
+      <button class="btn ghost" data-k="live" onclick="acSetKind('live')" style="flex:1">💵 Live / personal</button>
+      <button class="btn ghost" data-k="funded" onclick="acSetKind('funded')" style="flex:1">🏦 Funded (prop firm)</button>
+    </div>
+    <div id="ac-funded" style="display:none">
+      <div class="flabel">Which stage are you starting?</div>
+      <div id="ac-phase-btns" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn ghost" data-p="p1" onclick="acSetPhase('p1')" style="flex:1">1️⃣ Phase 1</button>
+        <button class="btn ghost" data-p="p2" onclick="acSetPhase('p2')" style="flex:1">2️⃣ Phase 2</button>
+        <button class="btn ghost" data-p="funded" onclick="acSetPhase('funded')" style="flex:1">🏆 Funded</button>
+      </div>
+      <div class="form-grid" style="margin-top:10px">
+        <div><div class="flabel" style="margin-top:0">Prop firm</div><input type="text" id="ac-firm" placeholder="FTMO, FundedNext…"></div>
+        <div><div class="flabel" style="margin-top:0">Account size ($) *</div><input type="number" step="any" id="ac-size" placeholder="100000"></div>
+        <div><div class="flabel" style="margin-top:0">Profit target %</div><input type="number" step="any" id="ac-target" placeholder="8"></div>
+        <div><div class="flabel" style="margin-top:0">Max daily loss %</div><input type="number" step="any" id="ac-daily" placeholder="5"></div>
+        <div><div class="flabel" style="margin-top:0">Max total loss %</div><input type="number" step="any" id="ac-total" placeholder="10"></div>
+      </div>
+      <div class="calm" style="margin-top:10px">🕊 <span>Defaults follow the common 8% / 5% / 5% / 10% rules — edit to match your firm.</span></div>
+    </div>
+    <div id="ac-live" style="display:none">
+      <div class="flabel">Starting balance ($)</div>
+      <input type="number" step="any" id="ac-start" placeholder="150">
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="closeAcctModal()">Cancel</button>
+      <button class="btn" onclick="saveAccount()">Save account</button>
+    </div>
+  </div>
+</div>
+
 <!-- VISION GOAL MODAL -->
 <div class="modal" id="modal-goal">
   <div class="modal-card" style="max-width:520px">
@@ -914,7 +968,7 @@ async function ensureAccounts(){
   renderAcctSwitch();
 }
 function renderAcctSwitch(){
-  const opts=accounts.map(a=>`<option value="${a.id}" ${a.id===currentAccount?'selected':''}>💼 ${esc(a.name)}</option>`).join('')
+  const opts=accounts.map(a=>`<option value="${a.id}" ${a.id===currentAccount?'selected':''}>${acctLabel(a)}${a.status==='passed'?' ✓':(a.status==='failed'?' ✕':'')}</option>`).join('')
     +'<option value="__new">＋ New account…</option>';
   document.querySelectorAll('.acct-switch').forEach(sel=>{
     sel.innerHTML=accounts.length?opts:'<option>💼 Main account</option>';
@@ -922,14 +976,7 @@ function renderAcctSwitch(){
   });
 }
 async function switchAccount(v){
-  if(v==='__new'){
-    const name=(prompt('Name for the new account (e.g. "Exness $1000"):')||'').trim();
-    renderAcctSwitch();
-    if(!name) return;
-    const {data,error}=await sb.from('accounts').insert({user_id:user.id,name}).select().maybeSingle();
-    if(error){ alert(error.message.includes('duplicate')?'You already have an account with that name.':error.message); return; }
-    accounts.push(data); v=data.id;
-  }
+  if(v==='__new'){ renderAcctSwitch(); openAcctModal(); return; }
   currentAccount=v;
   try{ localStorage.setItem('zb_acct_'+user.id, v); }catch(e){}
   renderAcctSwitch();
@@ -939,14 +986,104 @@ async function switchAccount(v){
   loadTrades._view=act&&act.id!=='view-detail'?act.id.replace('view-',''):'dashboard';
   await loadTrades();
 }
-async function renameAccount(){
-  const a=accounts.find(x=>x.id===currentAccount); if(!a) return;
-  const name=(prompt('New name for this account:',a.name)||'').trim();
-  if(!name||name===a.name) return;
-  const {error}=await sb.from('accounts').update({name}).eq('id',a.id);
-  if(error){ alert(error.message); return; }
-  a.name=name; renderAcctSwitch();
+
+/* ---------- account setup modal (live vs funded prop firm) ---------- */
+let acKind='live', acPhase='p1', acEditing=null, acNextPhaseFrom=null;
+const PHASE_LABEL={p1:'Phase 1',p2:'Phase 2',funded:'Funded'};
+const PHASE_DEFAULTS={p1:{target:8,daily:5,total:10},p2:{target:5,daily:5,total:10},funded:{target:0,daily:5,total:10}};
+function acSetKind(k){
+  acKind=k;
+  document.querySelectorAll('#ac-kind-btns button').forEach(b=>{
+    const on=b.dataset.k===k;
+    b.style.borderColor=on?'var(--accent)':'var(--border)';
+    b.style.background=on?'rgba(108,92,231,.2)':'transparent';
+  });
+  document.getElementById('ac-funded').style.display=k==='funded'?'block':'none';
+  document.getElementById('ac-live').style.display=k==='live'?'block':'none';
 }
+function acSetPhase(pz){
+  acPhase=pz;
+  document.querySelectorAll('#ac-phase-btns button').forEach(b=>{
+    const on=b.dataset.p===pz;
+    b.style.borderColor=on?'var(--accent)':'var(--border)';
+    b.style.background=on?'rgba(108,92,231,.2)':'transparent';
+  });
+  const d=PHASE_DEFAULTS[pz];
+  const t=document.getElementById('ac-target');
+  if(!t.value||t.dataset.auto!=='0'){ t.value=d.target||''; t.dataset.auto='1'; }
+  const dl=document.getElementById('ac-daily'); if(!dl.value) dl.value=d.daily;
+  const tt=document.getElementById('ac-total'); if(!tt.value) tt.value=d.total;
+}
+function closeAcctModal(){ acEditing=null; acNextPhaseFrom=null; document.getElementById('modal-acct').classList.remove('on'); }
+function openAcctModal(acct,nextFrom){
+  acEditing=acct?acct.id:null; acNextPhaseFrom=nextFrom||null;
+  document.getElementById('acct-title').textContent=acct?'Edit account':(nextFrom?'Start the next stage':'New trading account');
+  const g=id=>document.getElementById(id);
+  g('ac-name').value=acct?acct.name:'';
+  g('ac-firm').value=acct?(acct.firm||''):(nextFrom?nextFrom.firm||'':'');
+  g('ac-size').value=acct&&acct.start_balance?acct.start_balance:(nextFrom&&nextFrom.start_balance?nextFrom.start_balance:'');
+  g('ac-target').value=acct&&acct.profit_target_pct!=null?acct.profit_target_pct:'';
+  g('ac-target').dataset.auto=acct?'0':'1';
+  g('ac-daily').value=acct&&acct.max_daily_pct!=null?acct.max_daily_pct:(nextFrom?nextFrom.max_daily_pct:'');
+  g('ac-total').value=acct&&acct.max_total_pct!=null?acct.max_total_pct:(nextFrom?nextFrom.max_total_pct:'');
+  g('ac-start').value=acct&&acct.kind!=='funded'&&acct.start_balance?acct.start_balance:'';
+  acSetKind(acct?(acct.kind||'live'):(nextFrom?'funded':'live'));
+  if(nextFrom){
+    const nx=nextFrom.phase==='p1'?'p2':'funded';
+    acSetPhase(nx);
+    g('ac-name').value=(nextFrom.firm||'Prop')+' '+(nextFrom.start_balance?Math.round(nextFrom.start_balance/1000)+'k':'')+' · '+PHASE_LABEL[nx];
+    g('ac-target').value=PHASE_DEFAULTS[nx].target||'';
+  } else acSetPhase(acct&&acct.phase?acct.phase:'p1');
+  document.getElementById('modal-acct').classList.add('on');
+}
+function editAccount(){
+  const a=accounts.find(x=>x.id===currentAccount);
+  if(a) openAcctModal(a);
+}
+async function saveAccount(){
+  const g=id=>document.getElementById(id);
+  const name=g('ac-name').value.trim();
+  if(!name){ alert('Give the account a name.'); return; }
+  const num=v=>{ const n=parseNum(v); return isNaN(n)?null:n; };
+  const row={user_id:user.id,name,kind:acKind};
+  if(acKind==='funded'){
+    const size=num(g('ac-size').value);
+    if(!size){ alert('Enter the account size (e.g. 100000).'); return; }
+    Object.assign(row,{firm:g('ac-firm').value.trim(),phase:acPhase,start_balance:size,
+      profit_target_pct:num(g('ac-target').value),max_daily_pct:num(g('ac-daily').value),
+      max_total_pct:num(g('ac-total').value),status:'active'});
+    if(acNextPhaseFrom) row.parent_id=acNextPhaseFrom.id;
+  }else{
+    Object.assign(row,{firm:'',phase:'',start_balance:num(g('ac-start').value),
+      profit_target_pct:null,max_daily_pct:null,max_total_pct:null,status:'active'});
+  }
+  if(acEditing){
+    const {error}=await sb.from('accounts').update(row).eq('id',acEditing);
+    if(error){ alert(error.message); return; }
+    Object.assign(accounts.find(a=>a.id===acEditing),row);
+    closeAcctModal(); renderAcctSwitch();
+    loadTrades._view='account'; await loadTrades();
+    return;
+  }
+  const {data,error}=await sb.from('accounts').insert(row).select('*').maybeSingle();
+  if(error){ alert(error.message.includes('duplicate')?'You already have an account with that name.':error.message); return; }
+  accounts.push(data);
+  closeAcctModal();
+  await switchAccount(data.id);
+  show('account');
+}
+async function setAccountStatus(id,st){
+  const a=accounts.find(x=>x.id===id); if(!a) return;
+  const {error}=await sb.from('accounts').update({status:st}).eq('id',id);
+  if(error){ alert(error.message); return; }
+  a.status=st;
+  renderAccount();
+}
+function startNextPhase(){
+  const a=accounts.find(x=>x.id===currentAccount); if(!a) return;
+  openAcctModal(null,a);
+}
+
 async function deleteAccount(){
   const a=accounts.find(x=>x.id===currentAccount); if(!a) return;
   if(accounts.length<=1){ alert('You need at least one account. Create another one first.'); return; }
@@ -1785,7 +1922,7 @@ function ledgerHtml(){
     </tbody></table></div>`;
 }
 function renderTxList(){ document.getElementById('tx-list').innerHTML=ledgerHtml(); }
-function renderAccount(){ document.getElementById('account-body').innerHTML=ledgerHtml(); }
+function renderAccount(){ renderChallenge(); document.getElementById('account-body').innerHTML=ledgerHtml(); }
 function refreshTxViews(){
   renderTxList();
   if(document.getElementById('view-account').classList.contains('active')) renderAccount();
@@ -2056,6 +2193,12 @@ function aiDataContext(){
   const bal=txSum+s.net;
   const acct=accounts.find(a=>a.id===currentAccount);
   let out=`TRADER: ${window._name||'trader'} · Account: "${acct?acct.name:'Main'}" · Balance: $${bal.toFixed(2)} (deposits $${txSum.toFixed(2)} + P&L $${s.net.toFixed(2)})\n`;
+  if(acct&&acct.kind==='funded'){
+    const c=challengeState(acct);
+    out+=`ACCOUNT TYPE: PROP FIRM CHALLENGE — ${acct.firm||'firm'} ${PHASE_LABEL[acct.phase]||''}, status ${acct.status}.\n`;
+    if(c) out+=`CHALLENGE: size $${c.start}, profit target ${c.targetPct}% ($${c.targetAmt.toFixed(0)}) — currently ${c.pnl.toFixed(0)} (${c.targetPct_done.toFixed(0)}% of target). Max total loss ${c.totalPct}% ($${c.maxLossAmt.toFixed(0)}) — used ${c.lossUsed.toFixed(0)}%. Daily loss limit $${c.maxDaily.toFixed(0)} — today ${c.todayPnl.toFixed(0)}. Trading days ${c.tradingDays}. THIS IS A FUNDED CHALLENGE: rule breaches end the account, so coach accordingly.\n`;
+  } else if(acct){ out+=`ACCOUNT TYPE: personal/live account.\n`; }
+  if(accounts.length>1) out+='OTHER ACCOUNTS: '+accounts.filter(a=>a.id!==currentAccount).map(a=>`${a.name} (${a.kind==='funded'?(a.firm||'prop')+' '+(PHASE_LABEL[a.phase]||'')+' · '+a.status:'live'})`).join(' | ')+'\n';
   out+=`OVERALL: ${s.n} trades · win rate ${s.winRate.toFixed(1)}% · profit factor ${s.profitFactor>=99?'inf':s.profitFactor.toFixed(2)} · avg win $${s.avgWin.toFixed(0)} · avg loss $${s.avgLoss.toFixed(0)} · max drawdown $${s.maxDD.toFixed(0)} · day win rate ${s.dayWinRate.toFixed(0)}%\n`;
   // per setup
   out+='SETUPS: '+Object.entries(s.bySetup).map(([k,v])=>{
@@ -2267,6 +2410,7 @@ function renderAI(){
       <button class="rail-btn" onclick="aiQuick('week')">📊 Review my week</button>
       <button class="rail-btn" onclick="aiQuick('grow')">🌱 How do I grow?</button>
       <button class="rail-btn" onclick="aiQuick('weekly')">🗓 My weekly calls</button>
+      <button class="rail-btn" onclick="aiQuick('challenge')">🏦 Challenge coaching</button>
       <div class="rail-label">History</div>
       <div class="ai-rail-hist" id="ai-rail-hist">${railHistHtml()}</div>
       <div style="margin-top:10px;font-size:11px;color:var(--muted)">${geminiKey?`🔑 key saved · <a style="color:var(--accent2);cursor:pointer" onclick="geminiKey='';renderAI()">change</a>`:'🔑 no key yet'}</div>
@@ -2280,6 +2424,7 @@ function renderAI(){
         <button onclick="aiQuick('week')">📊 Week</button>
         <button onclick="aiQuick('grow')">🌱 Grow</button>
         <button onclick="aiQuick('weekly')">🗓 Weekly</button>
+        <button onclick="aiQuick('challenge')">🏦 Challenge</button>
       </div>
       ${aiHistOpen?`<div class="ai-hist">${railHistHtml()}</div>`:''}
       ${keyCard}
@@ -2303,6 +2448,7 @@ const AI_QUICK={
   risk:"Do a strict RISK MANAGEMENT audit. Analyze my loss sizes vs balance, stop-loss usage, lot sizing consistency, drawdown. Tell me exactly what to change, with numbers.",
   week:"Review my recent trading like a weekly report: what worked, what didn't, my best and worst habits, and my single biggest leak. Use my real numbers.",
   grow:"Given my stats, balance and playbook: what is the realistic path to grow this account? What should I focus on for the next 2 weeks? Be specific and honest about my weaknesses.",
+  challenge:"I am trading a PROP FIRM CHALLENGE. Given my target, drawdown limits and current progress, coach me: what daily risk should I take, how many trades per day, and what would blow this account? Be calm, precise and protective of the account.",
   weekly:"Review my WEEKLY MARKET CALLS with me. How accurate are my forecasts? Which biases and symbols do I read well or badly? What patterns do you see in WHY I miss (news, geopolitics, technicals)? Then discuss this week's open calls with me."
 };
 function aiQuick(k){ aiSendText(AI_QUICK[k]); }
@@ -2370,6 +2516,97 @@ function sheetGo(v){
 }
 
 
+
+
+/* ---------- prop-firm challenge tracking ---------- */
+function acctLabel(a){
+  if(!a) return '';
+  if(a.kind!=='funded') return '💵 '+a.name;
+  const ic=a.phase==='funded'?'🏆':(a.phase==='p2'?'2️⃣':'1️⃣');
+  return ic+' '+a.name;
+}
+function challengeState(a){
+  if(!a||a.kind!=='funded'||!a.start_balance) return null;
+  const start=+a.start_balance;
+  const pnl=trades.reduce((x,t)=>x+t.profit,0);
+  const equity=start+pnl;
+  const targetPct=+a.profit_target_pct||0;
+  const targetAmt=start*targetPct/100;
+  const totalPct=+a.max_total_pct||0;
+  const maxLossAmt=start*totalPct/100;
+  const dailyPct=+a.max_daily_pct||0;
+  const maxDaily=start*dailyPct/100;
+  // worst day + today
+  const days={};
+  trades.forEach(t=>{ const d=t.closeTime.slice(0,10); days[d]=(days[d]||0)+t.profit; });
+  const today=new Date().toISOString().slice(0,10);
+  const todayPnl=days[today]||0;
+  const worstDay=Math.min(0,...Object.values(days),0);
+  // peak-to-trough
+  let peak=start, cum=start, dd=0;
+  Object.keys(days).sort().forEach(d=>{ cum+=days[d]; peak=Math.max(peak,cum); dd=Math.max(dd,peak-cum); });
+  const tradingDays=Object.keys(days).length;
+  return {start,pnl,equity,targetPct,targetAmt,totalPct,maxLossAmt,dailyPct,maxDaily,
+    todayPnl,worstDay,dd,tradingDays,
+    targetPct_done: targetAmt>0?Math.max(0,Math.min(100,pnl/targetAmt*100)):0,
+    lossUsed: maxLossAmt>0?Math.max(0,Math.min(100,(start-equity)/maxLossAmt*100)):0,
+    dailyUsed: maxDaily>0?Math.max(0,Math.min(100,(-todayPnl)/maxDaily*100)):0,
+    hitTarget: targetAmt>0&&pnl>=targetAmt,
+    breached: maxLossAmt>0&&(start-equity)>=maxLossAmt};
+}
+function bar(pct,col){ return `<div class="chal-bar"><i style="width:${Math.max(1,pct)}%;background:${col}"></i></div>`; }
+function renderChallenge(){
+  const el=document.getElementById('challenge-card'); if(!el) return;
+  const a=accounts.find(x=>x.id===currentAccount);
+  if(!a){ el.innerHTML=''; return; }
+  if(a.kind!=='funded'){
+    el.innerHTML=`<div class="calm" style="margin-bottom:14px">💵 <span><b>${esc(a.name)}</b> — personal / live account${a.start_balance?' · started with '+money(+a.start_balance):''}.</span></div>`;
+    return;
+  }
+  const c=challengeState(a);
+  if(!c){ el.innerHTML=`<div class="calm" style="margin-bottom:14px">🏦 <span>Add the account size in <b>✏ Edit account</b> to track your challenge progress.</span></div>`; return; }
+  const phases=['p1','p2','funded'];
+  const cur=phases.indexOf(a.phase||'p1');
+  const statusBadge = a.status==='passed'?'<span class="acct-badge" style="background:rgba(34,196,122,.2);color:var(--green)">PASSED</span>'
+    : a.status==='failed'?'<span class="acct-badge" style="background:rgba(240,80,110,.2);color:var(--red)">BREACHED</span>'
+    : '<span class="acct-badge" style="background:rgba(108,92,231,.2);color:var(--accent2)">IN PROGRESS</span>';
+  const nextExists=accounts.some(x=>x.parent_id===a.id);
+  el.innerHTML=`<div class="chal">
+    <h3><span>🏦 ${esc(a.firm||'Prop firm')} · ${money(c.start,0)} · ${PHASE_LABEL[a.phase]||''}</span>${statusBadge}</h3>
+    <div class="phase-track">
+      ${phases.map((pz,i)=>`<div class="phase-node ${i<cur||(i===cur&&a.status==='passed')?'done':(i===cur?'on':'')}">${i<cur?'✓ ':''}${PHASE_LABEL[pz]}</div>`)
+        .join('<span class="phase-arrow">→</span>')}
+    </div>
+    ${c.targetAmt>0?`<div class="chal-row">
+      <div class="lab"><span>🎯 Profit target (${c.targetPct}%)</span><b class="${c.pnl>=0?'pos':'neg'}">${signed(c.pnl,0)} / ${money(c.targetAmt,0)}</b></div>
+      ${bar(c.targetPct_done, c.hitTarget?'var(--green)':'linear-gradient(90deg,var(--accent),#38bdf8)')}
+      <div style="color:var(--muted);font-size:11px">${c.hitTarget?'🎉 Target reached — well done.':`${Math.round(c.targetPct_done)}% there · ${money(Math.max(0,c.targetAmt-c.pnl),0)} to go`}</div>
+    </div>`:''}
+    ${c.maxLossAmt>0?`<div class="chal-row">
+      <div class="lab"><span>🛡 Max total loss (${c.totalPct}%)</span><b>${money(Math.max(0,c.start-c.equity),0)} / ${money(c.maxLossAmt,0)} used</b></div>
+      ${bar(c.lossUsed, c.lossUsed>70?'var(--red)':(c.lossUsed>40?'var(--gold)':'var(--green)'))}
+      <div style="color:var(--muted);font-size:11px">Floor at ${money(c.start-c.maxLossAmt,0)} · max drawdown so far ${money(c.dd,0)}</div>
+    </div>`:''}
+    ${c.maxDaily>0?`<div class="chal-row">
+      <div class="lab"><span>📅 Today's loss limit (${c.dailyPct}%)</span><b>${money(Math.max(0,-c.todayPnl),0)} / ${money(c.maxDaily,0)}</b></div>
+      ${bar(c.dailyUsed, c.dailyUsed>70?'var(--red)':(c.dailyUsed>40?'var(--gold)':'var(--green)'))}
+      <div style="color:var(--muted);font-size:11px">${c.dailyUsed>60?'⚠ Close to the daily limit — consider stopping for today.':'Comfortable. '+c.tradingDays+' trading days logged.'}</div>
+    </div>`:''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+      ${a.status==='active'&&c.hitTarget&&a.phase!=='funded'?`<button class="btn" onclick="passPhase()">✅ I passed ${PHASE_LABEL[a.phase]} → start ${a.phase==='p1'?'Phase 2':'Funded'}</button>`:''}
+      ${a.status==='passed'&&a.phase!=='funded'&&!nextExists?`<button class="btn" onclick="startNextPhase()">➡ Start ${a.phase==='p1'?'Phase 2':'Funded'} account</button>`:''}
+      ${a.status==='active'?`<button class="btn ghost" onclick="setAccountStatus('${a.id}','passed')">Mark passed</button>
+        <button class="btn danger" onclick="setAccountStatus('${a.id}','failed')">Mark breached</button>`:
+        `<button class="btn ghost" onclick="setAccountStatus('${a.id}','active')">↺ Back to in progress</button>`}
+      <button class="btn ghost" onclick="show('ai');setTimeout(()=>aiQuick('challenge'),300)">✨ Coach me through this challenge</button>
+    </div>
+  </div>`;
+}
+async function passPhase(){
+  const a=accounts.find(x=>x.id===currentAccount); if(!a) return;
+  await setAccountStatus(a.id,'passed');
+  openAcctModal(null,a);
+}
 
 /* ================= VISION & CALM ================= */
 const MOTTOS=[

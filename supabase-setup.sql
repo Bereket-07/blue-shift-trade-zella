@@ -444,6 +444,19 @@ create policy "own vg update" on public.vision_goals for update using (auth.uid(
 drop policy if exists "own vg delete" on public.vision_goals;
 create policy "own vg delete" on public.vision_goals for delete using (auth.uid() = user_id);
 
+-- ============================================================
+-- 13. ACCOUNT TYPES — live vs funded (prop firm) with phases
+-- ============================================================
+alter table public.accounts add column if not exists kind text default 'live';
+alter table public.accounts add column if not exists firm text default '';
+alter table public.accounts add column if not exists phase text default '';
+alter table public.accounts add column if not exists start_balance numeric;
+alter table public.accounts add column if not exists profit_target_pct numeric;
+alter table public.accounts add column if not exists max_daily_pct numeric;
+alter table public.accounts add column if not exists max_total_pct numeric;
+alter table public.accounts add column if not exists status text default 'active';
+alter table public.accounts add column if not exists parent_id uuid;
+
 -- 7. MAKE YOURSELF ADMIN (edit the email, run after logging in once)
 -- ============================================================
 update public.profiles set is_admin = true

@@ -1168,50 +1168,80 @@ function openDetail(id){ detailId=id; renderDetail();
 /* ================= PARSING ================= */
 function parseNum(s){ if(s==null) return NaN; return parseFloat(String(s).replace(/[\s,]/g,'').replace(/−/g,'-')); }
 function parseDate(s){
-  if(!s) return null;
-  s = String(s).trim();
-  let m = s.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})[ T]?(\d{1,2})?:?(\d{1,2})?/);
-  if(m) return new Date(+m[1], +m[2]-1, +m[3], +(m[4]||0), +(m[5]||0));
-  m = s.match(/(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})[ T]?(\d{1,2})?:?(\d{1,2})?/);
-  if(m) return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
-  const d = new Date(s); return isNaN(d)?null:d;
+  if(s==null) return null;
+  s=String(s).replace(/ /g,' ').trim();
+  let m=s.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0));
+  m=s.match(/(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m) return new Date(+m[3],+m[2]-1,+m[1],+(m[4]||0),+(m[5]||0),+(m[6]||0));
+  if(/^\d{4}-\d{2}-\d{2}T/.test(s)){ const d=new Date(s); return isNaN(d)?null:d; }
+  return null;
 }
 function tradeKey(t){ return [t.openTime,t.symbol,t.side,t.lots,t.entry,t.profit].join('|'); }
 
 function parseHTMLReport(text){
   const doc = new DOMParser().parseFromString(text,'text/html');
   const rows = [...doc.querySelectorAll('tr')];
-  const found = [];
+  const found = [], txs = [];
   for(const tr of rows){
-    const cells = [...tr.querySelectorAll('td,th')].map(c=>c.textContent.trim());
-    if(cells.length < 8) continue;
-    const sideIdx = cells.findIndex(c=>/^(buy|sell)( limit| stop)?$/i.test(c));
-    if(sideIdx < 1) continue;
-    const openTime = parseDate(cells[0]);
+    const cells=[...tr.querySelectorAll('td,th')].map(c=>c.textContent.replace(/ /g,' ').trim());
+    if(cells.length<5) continue;
+    const openTime=parseDate(cells[0]);
     if(!openTime) continue;
-    const nums = cells.map(parseNum);
-    const profit = nums[cells.length-1];
-    if(isNaN(profit)) continue;
-    const symbol = (cells[sideIdx-1]||'').replace(/[^A-Za-z0-9._#]/g,'');
-    if(!symbol) continue;
-    const lots = nums[sideIdx+1], entry = nums[sideIdx+2];
-    const sl = nums[sideIdx+3], tp = nums[sideIdx+4];
-    let closeTime = null, exit = NaN;
-    for(let i=sideIdx+3;i<cells.length-1;i++){
-      const d = parseDate(cells[i]);
-      if(d && d>=openTime){ closeTime = d; exit = nums[i+1]; break; }
+
+    /* deposits / withdrawals ("balance" rows) */
+    if(cells.some(c=>/^balance$/i.test(c))){
+      let amount=parseNum(cells[cells.length-3]);
+      if(isNaN(amount)||amount===0){
+        const nums=cells.slice(2).map(parseNum).filter(n=>!isNaN(n)&&n!==0);
+        amount=nums.length?nums[nums.length-1]:NaN;
+      }
+      if(!isNaN(amount)&&amount!==0){
+        const note=(cells[cells.length-1]||'').slice(0,60);
+        txs.push({time:openTime.toISOString(),label:note||'Balance operation',amount,source:'mt5-report'});
+      }
+      continue;
     }
-    const commission = nums[cells.length-3]||0, swap = nums[cells.length-2]||0;
+
+    const sideIdx=cells.findIndex(c=>/^(buy|sell)$/i.test(c));
+    if(sideIdx<1) continue;
+    const symbol=(cells[sideIdx-1]||'').replace(/[^A-Za-z0-9._#]/g,'').toUpperCase();
+    if(!symbol) continue;
+
+    /* everything after the side, ignoring the empty spacer cells MT5 emits */
+    const tail=cells.slice(sideIdx+1).filter(c=>c!=='');
+    /* close time is the anchor: volume, price [, sl, tp], CLOSE TIME, close price, commission, swap, profit */
+    let dIdx=-1, closeTime=null;
+    for(let i=1;i<tail.length;i++){
+      const d=parseDate(tail[i]);
+      if(d&&d>=openTime){ dIdx=i; closeTime=d; break; }
+    }
+    if(dIdx<2) continue;                       // skips Orders rows & headers
+    if(tail.length<dIdx+4) continue;           // needs price + fees + profit after it
+    const profit=parseNum(tail[tail.length-1]);
+    if(isNaN(profit)) continue;                // skips "filled"/comment rows
+
+    const lots=parseNum(tail[0]);
+    const entry=parseNum(tail[1]);
+    const exit=parseNum(tail[dIdx+1]);
+    let sl=NaN, tp=NaN;
+    if(dIdx>=4){ sl=parseNum(tail[2]); tp=parseNum(tail[3]); }
+    else if(dIdx===3){ sl=parseNum(tail[2]); }
+    const swap=parseNum(tail[tail.length-2]);
+    const commission=parseNum(tail[tail.length-3]);
+    const fees=(isNaN(commission)?0:commission)+(isNaN(swap)?0:swap);
+
     found.push({
-      openTime: openTime.toISOString(), closeTime: closeTime?closeTime.toISOString():openTime.toISOString(),
-      symbol: symbol.toUpperCase(), side: /sell/i.test(cells[sideIdx])?'SELL':'BUY',
-      lots: isNaN(lots)?null:lots, entry: isNaN(entry)?null:entry, exit: isNaN(exit)?null:exit,
-      sl: isNaN(sl)||sl===0?null:sl, tp: isNaN(tp)||tp===0?null:tp,
-      commission: isNaN(commission)?0:commission, swap: isNaN(swap)?0:swap, profit,
+      openTime:openTime.toISOString(), closeTime:closeTime.toISOString(),
+      symbol, side:/sell/i.test(cells[sideIdx])?'SELL':'BUY',
+      lots:isNaN(lots)?null:lots, entry:isNaN(entry)?null:entry, exit:isNaN(exit)?null:exit,
+      sl:isNaN(sl)||sl===0?null:sl, tp:isNaN(tp)||tp===0?null:tp,
+      commission:isNaN(commission)?0:commission, swap:isNaN(swap)?0:swap,
+      profit:+(profit+fees).toFixed(2),        // net P&L, matches broker equity
       setup:'', emotion:'', notesPre:'', notesPost:'', shots:[], source:'mt5-report'
     });
   }
-  return found;
+  return {trades:found, txs};
 }
 
 function parseCSV(text){
@@ -1325,9 +1355,13 @@ async function handleFiles(files){
       hadPdf=true;
       const r=await parsePDF(f);
       all.push(...r.trades); allTxs.push(...r.txs);
+    }else if(/\.csv$/i.test(f.name)){
+      const text=await f.text();
+      all.push(...parseCSV(text));
     }else{
       const text=await f.text();
-      all.push(...(/\.csv$/i.test(f.name)?parseCSV(text):parseHTMLReport(text)));
+      const r=parseHTMLReport(text);
+      all.push(...r.trades); allTxs.push(...r.txs);
     }
   }
   fileInput.value='';

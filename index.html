@@ -728,6 +728,7 @@
   <div class="bp-settings" id="blue-settings">
     <label><input type="checkbox" id="bs-wake" onchange="blueSetPref('wake',this.checked)"> Always listen for “Blue” while this tab is open</label>
     <label><input type="checkbox" id="bs-voice" onchange="blueSetPref('voice',this.checked)"> Speak replies out loud</label>
+    <label><input type="checkbox" id="bs-barge" onchange="blueSetPref('barge',this.checked)"> Let me interrupt her by talking (best with headphones; on phones tap the mic instead)</label>
     <select id="bs-voicename" onchange="blueSetPref('voiceName',this.value)"></select>
     <div class="bp-hint">Voice works in Chrome, Edge and Safari. Blue uses your Gemini key from the ✨ Zella AI tab. Every change she makes shows up here with an Undo button.</div>
   </div>
@@ -2306,6 +2307,7 @@ async function loadSecrets(){
 }
 async function saveGeminiKey(k){
   geminiKey=k.trim();
+  gemResetKeyState();
   const {error}=await sb.from('user_secrets').upsert({user_id:user.id, gemini_key:geminiKey, updated_at:new Date().toISOString()},{onConflict:'user_id'});
   if(error){ alert(error.message+'\n\nDid you run the Zella AI SQL (section 9)?'); return false; }
   return true;
@@ -2374,19 +2376,27 @@ const AI_SYSTEM=`You are Zella AI, a sharp trading performance coach inside the 
 Focus areas in order: 1) trading psychology 2) risk management 3) strategy/statistics.
 Style: direct, warm, honest like a trusted mentor. Short paragraphs. A few emojis. Use THEIR real numbers from the data — quote exact figures. Call out dangerous patterns bluntly (revenge trading, missing stop losses, oversized losses, emotion-driven losses). Celebrate what genuinely works. Give at most 3 concrete action points per answer. Never give financial advice to buy/sell specific assets; coach the process, not the market. Answer in the user's language if they write in another language.`;
 
-let gemModel=null;
+let gemModel=null, gemList=null;
+/* models whose quota ran out → skip them until this time (survives reloads) */
+let gemSkip={};
+try{ gemSkip=JSON.parse(localStorage.getItem('zb_gskip')||'{}'); }catch(e){}
+function gemSkipSave(){ try{ localStorage.setItem('zb_gskip',JSON.stringify(gemSkip)); }catch(e){} }
+function gemResetKeyState(){ gemModel=null; gemList=null; gemSkip={}; gemSkipSave(); }
 async function gemModels(){
+  if(gemList&&gemList.key===geminiKey) return gemList.list;
   try{
     const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(geminiKey)}&pageSize=200`);
     const j=await r.json();
-    return (j.models||[])
+    const list=(j.models||[])
       .filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent'))
       .map(m=>m.name.replace('models/',''));
+    if(list.length) gemList={key:geminiKey,list};
+    return list;
   }catch(e){ return []; }
 }
 async function gemCandidates(){
   const avail=await gemModels();
-  const bad=['thinking','tts','image','audio','live','embedding','aqa','8b','exp','vision'];
+  const bad=['thinking','tts','image','audio','live','embedding','aqa','8b','exp','vision','computer'];
   const usable=avail.filter(n=>n.startsWith('gemini')&&!bad.some(b=>n.includes(b)));
   const score=n=>{
     const v=(n.match(/gemini-(\d+(?:\.\d+)?)/)||[])[1];
@@ -2401,14 +2411,18 @@ async function gemCandidates(){
   const list=[];
   if(gemModel) list.push(gemModel);
   sorted.forEach(n=>{ if(!list.includes(n)) list.push(n); });
-  if(!list.length) list.push('gemini-2.5-flash','gemini-2.0-flash');
-  return list.slice(0,5);
+  if(!list.length) list.push('gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.0-flash');
+  const now=Date.now();
+  return list.filter(m=>!(gemSkip[m]>now)).slice(0,8);
 }
+const GEM_QUOTA_DAY='⚠ Your free Gemini quota for today is used up (Google allows only a small number of free requests per day). It resets every day around midnight Pacific time.\n\nA new key from the SAME Google project shares the same quota — that is why changing the key did not help. To get fresh quota now: in aistudio.google.com/apikey click "Create API key" → "Create key in new project", then paste that key in the ✨ Zella AI tab. Or turn on billing for the project.';
 /* one generateContent call with model fallback → {j} on success, {err:'⚠ …'} on failure */
 async function gemRequest(payload){
   const body=JSON.stringify(payload);
-  let lastErr='';
-  for(const model of await gemCandidates()){
+  let lastErr='', quota=false, daily=false;
+  const cands=await gemCandidates();
+  if(!cands.length) return {err:GEM_QUOTA_DAY};
+  for(const model of cands){
     try{
       const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(geminiKey)}`,{
         method:'POST',headers:{'Content-Type':'application/json'},body
@@ -2416,14 +2430,24 @@ async function gemRequest(payload){
       const j=await r.json();
       if(r.ok){ gemModel=model; return {j}; }
       lastErr=(j.error&&j.error.message)||String(r.status);
-      // model not on free tier / not found → try next candidate
-      if(r.status===429&&lastErr.includes('limit: 0')){ continue; }
+      const raw=JSON.stringify(j.error||{});
       if(r.status===404){ continue; }
-      if(r.status===429) return {err:'⚠ Rate limit hit — wait a minute and try again. ('+model+')'};
-      return {err:'⚠ Gemini error: '+lastErr+'\nCheck your key in the ✨ tab (starts with AIza or AQ.).'};
+      if(r.status===429){
+        // out of quota on this model → remember it and try the next model (each has its own quota)
+        quota=true;
+        const perDay=/PerDay|limit: 0/i.test(raw);
+        if(perDay) daily=true;
+        gemSkip[model]=Date.now()+(perDay?3*3600e3:65e3); gemSkipSave();
+        if(gemModel===model) gemModel=null;
+        continue;
+      }
+      if(r.status===500||r.status===503){ continue; }   // model overloaded → next one
+      if(r.status===403||/API key|API_KEY/i.test(lastErr)) return {err:'⚠ Google says this key is not valid: '+lastErr+'\nCopy it again from aistudio.google.com/apikey and paste it in the ✨ Zella AI tab.'};
+      return {err:'⚠ Gemini error ('+model+'): '+lastErr};
     }catch(e){ lastErr=e.message||'network error'; }
   }
-  return {err:'⚠ No usable Gemini model on your key\'s free tier right now. Last error: '+lastErr};
+  if(quota) return {err:daily?GEM_QUOTA_DAY:'⚠ Gemini is rate-limiting your key — too many requests in one minute. Wait a minute and try again.'};
+  return {err:'⚠ No usable Gemini model on your key right now. Last error: '+lastErr};
 }
 async function gemini(userMsgs){
   if(!geminiKey) return '⚠ Add your free Gemini API key first (see the box above).';
@@ -2433,7 +2457,9 @@ async function gemini(userMsgs){
     contents
   });
   if(res.err) return res.err;
-  return res.j.candidates[0].content.parts.filter(p=>p.text&&!p.thought).map(p=>p.text).join('').trim();
+  const c=res.j.candidates&&res.j.candidates[0];
+  const txt=((c&&c.content&&c.content.parts)||[]).filter(p=>p.text&&!p.thought).map(p=>p.text).join('').trim();
+  return txt||'⚠ Gemini sent back an empty answer'+(c&&c.finishReason?' ('+c.finishReason+')':'')+' — please try again.';
 }
 
 function mdLite(t){
@@ -2592,7 +2618,9 @@ async function aiSendText(text){
   if(!geminiKey){ renderAI(); return; }
   aiMsgs.push({role:'user',text});
   aiBusy=true; renderAI();
-  const reply=await gemini(aiMsgs.slice(-12));
+  let reply;
+  try{ reply=await gemini(aiMsgs.filter(m=>!(m.role==='model'&&m.text.startsWith('⚠'))).slice(-12)); }
+  catch(e){ reply='⚠ Something went wrong: '+(e.message||e); }
   aiMsgs.push({role:'model',text:reply});
   aiBusy=false; renderAI();
   persistChat();
@@ -2610,11 +2638,18 @@ async function updateHeadline(){
   const key='zb_hl_'+user.id+'_'+(currentAccount||'x')+'_'+Repo_today();
   let cached=null; try{ cached=localStorage.getItem(key); }catch(e){}
   if(cached){ el.innerHTML=`<div class="ai-hl">✨ ${mdLite(cached)} <a style="color:var(--muted);font-size:11px;cursor:pointer" onclick="localStorage.removeItem('${key}');updateHeadline()">↻</a></div>`; return; }
+  // a failed headline waits 30 min before retrying, so re-renders don't burn the free quota
+  if(Date.now()-(updateHeadline.failAt[key]||0)<30*60000){ el.innerHTML=''; return; }
+  if(updateHeadline.busy) return;
+  updateHeadline.busy=true;
   el.innerHTML='<div class="ai-hl" style="color:var(--muted)">✨ Zella AI is reading your data…</div>';
   const hl=await gemini([{role:'user',text:'Write TODAY\'S HEADLINE for my dashboard: ONE punchy insight (max 28 words) from my most recent data — psychology, risk or performance. Most important thing I should know today. No preamble, just the line.'}]);
-  if(!hl.startsWith('⚠')){ try{ localStorage.setItem(key,hl); }catch(e){} }
+  updateHeadline.busy=false;
+  if(hl.startsWith('⚠')){ updateHeadline.failAt[key]=Date.now(); el.innerHTML=''; return; }
+  try{ localStorage.setItem(key,hl); }catch(e){}
   el.innerHTML=`<div class="ai-hl">✨ ${mdLite(hl)}</div>`;
 }
+updateHeadline.failAt={};
 function Repo_today(){ return new Date().toISOString().slice(0,10); }
 
 /* ---- per-trade analysis ---- */
@@ -3794,7 +3829,7 @@ You can change the journal with your tools — use them. Rules:
 - "I closed my gold trade, made 240" → close_trade on the matching open position. If several match, ask which.
 - Their reasons go in reason, lessons in review, cleaned up but in their voice. Match setup to an existing playbook name when it fits.
 - "blue book", "playbook", "strategy book" all mean the playbook → save_strategy.
-- After acting, confirm in one line what you recorded. If something is dangerous (no stop loss, revenge trade right after a loss, oversized risk) add one short coach-like warning.
+- When you call a tool, put your short spoken confirmation as text IN THE SAME REPLY as the tool call (saves a round trip). Confirm in one line what you recorded. If something is dangerous (no stop loss, revenge trade right after a loss, oversized risk) add one short coach-like warning.
 - Questions about performance: answer from the data with real numbers.
 - If a tool returns an error, tell the user plainly.
 Now: ${bOffsetIso(now)} (${now.toLocaleDateString('en',{weekday:'long'})}). Times the user mentions are in this timezone; give tool times as ISO 8601 with this offset.
@@ -3821,20 +3856,25 @@ async function blueThink(text){
       if(blueConvo.length>30){ let i=blueConvo.length-24; while(i<blueConvo.length&&!(blueConvo[i].role==='user'&&blueConvo[i].parts[0].text!=null)) i++; blueConvo=blueConvo.slice(i); }
       return content.parts.filter(p=>p.text&&!p.thought).map(p=>p.text).join('').trim()||'Done.';
     }
-    const parts=[];
+    const said=content.parts.filter(p=>p.text&&!p.thought).map(p=>p.text).join('').trim();
+    const parts=[]; let failed=false;
     for(const c of calls){
       const fn=BLUE_ACTIONS[c.functionCall.name];
       let out;
       try{ out=fn?await fn(c.functionCall.args||{}):{error:'Unknown tool'}; }catch(e){ out={error:e.message||String(e)}; }
+      if(!out||out.error) failed=true;
       parts.push({functionResponse:{name:c.functionCall.name,response:out}});
     }
     blueConvo.push({role:'user',parts});
+    // she already said her confirmation alongside the tool call and it all worked → save a Gemini request
+    if(said&&!failed){ blueConvo.push({role:'model',parts:[{text:said}]}); return said; }
   }
   return 'Done.';
 }
 
 /* ---- panel UI ---- */
-let bPrefs={wake:false,voice:true,voiceName:''};
+const bIsMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+let bPrefs={wake:false,voice:true,voiceName:'',barge:!bIsMobile};
 try{ Object.assign(bPrefs,JSON.parse(localStorage.getItem('zb_blue')||'{}')); }catch(e){}
 function blueSetPref(k,v){
   bPrefs[k]=v;
@@ -3855,6 +3895,7 @@ function blueOpenPanel(){
   if(!document.getElementById('blue-log').children.length) blueIntro();
   document.getElementById('bs-wake').checked=!!bPrefs.wake;
   document.getElementById('bs-voice').checked=!!bPrefs.voice;
+  document.getElementById('bs-barge').checked=!!bPrefs.barge;
 }
 function blueClosePanel(){
   document.getElementById('blue-panel').classList.remove('on');
@@ -3895,7 +3936,7 @@ function blueTyped(){
 async function blueHandle(text,byVoice){
   text=String(text||'').trim();
   if(!text||bBusy) return;
-  if(window.speechSynthesis) speechSynthesis.cancel();
+  bHush();
   blueOpenPanel();
   blueMsg('user',text);
   if(!geminiKey){
@@ -3932,11 +3973,15 @@ function bPrimeSpeech(){ try{ if(window.speechSynthesis){ const u=new SpeechSynt
 function bSpeakable(t){
   return String(t).replace(/[*#`_>]/g,'').replace(/[\p{Extended_Pictographic}️]/gu,'').replace(/\s+/g,' ').trim();
 }
+let bSpeakTok=0, bSpoken=[];
+function bHush(){ bSpeakTok++; bSpeaking=false; if(window.speechSynthesis) speechSynthesis.cancel(); }
 function blueSpeak(text,after){
-  const done=()=>{ bSpeaking=false; after&&after(); };
+  const tok=++bSpeakTok;
+  const done=()=>{ if(tok!==bSpeakTok) return; bSpeaking=false; if(bMode==='barge') bStopRec(); after&&after(); };
   const clean=bSpeakable(text);
   if(!bPrefs.voice||!window.speechSynthesis||!clean){ done(); return; }
   speechSynthesis.cancel();
+  bSpoken=clean.toLowerCase().match(/[a-z0-9']+/g)||[];
   bSpeaking=true; blueState('speaking');
   const parts=clean.replace(/([.!?])\s+/g,'$1\u0001').split('\u0001').filter(Boolean);
   const v=bVoice();
@@ -3950,6 +3995,7 @@ function blueSpeak(text,after){
     u.onerror=fin;
     speechSynthesis.speak(u);
   });
+  if(bPrefs.barge&&BlueSR) bStartRec('barge');   // keep listening so the user can talk over her
 }
 function bChime(){
   try{
@@ -3981,8 +4027,15 @@ function bStartRec(mode){
   bMode=mode; bWakeIdx=0; bByWord=false; bText=''; bWokeAt=Date.now();
   r.lang=navigator.language||'en-US'; r.continuous=true; r.interimResults=true;
   r.onresult=e=>{
-    if(bSpeaking||bBusy) return;
+    if(bBusy) return;
     const R=e.results;
+    if(bMode==='barge'){
+      for(let i=e.resultIndex;i<R.length;i++){
+        if(bIsBargeIn(R[i][0].transcript,R[i].isFinal)){ bHush(); bWakeIdx=i; bByWord=true; bMode='command'; bWokeAt=Date.now(); blueState('listening'); break; }
+      }
+      if(bMode!=='command') return;
+    }
+    else if(bSpeaking) return;
     if(bMode==='wake'){
       for(let i=e.resultIndex;i<R.length;i++){
         if(BLUE_WAKE.test(R[i][0].transcript)){ bWakeIdx=i; bByWord=true; bMode='command'; bWokeAt=Date.now(); bChime(); blueOpenPanel(); blueState('listening'); break; }
@@ -3997,7 +4050,7 @@ function bStartRec(mode){
     }
     bText=txt.trim(); blueLive(bText);
     clearTimeout(bSilence);
-    bSilence=setTimeout(bFinish, allFinal?1700:2800);
+    bSilence=setTimeout(bFinish, allFinal?2200:3200);
   };
   r.onerror=e=>{
     if(e.error==='not-allowed'||e.error==='service-not-allowed'){
@@ -4008,12 +4061,14 @@ function bStartRec(mode){
   r.onend=()=>{
     if(bRec!==r) return;
     bRec=null;
-    if(bMode==='command'&&bText) bFinish();
-    else if(bMode==='command'&&!bByWord) blueResume(false);
-    else if(bPrefs.wake&&!bSpeaking&&!bBusy) setTimeout(()=>{ if(!bRec&&!bSpeaking&&!bBusy&&bPrefs.wake) bStartRec('wake'); },250);
+    if(bMode==='barge') return;
+    if(bMode==='command'&&bText){ bFinish(); return; }
+    if(bSpeaking||bBusy) return;
+    if(bMode==='command'){ blueResume(false); return; }
+    if(bPrefs.wake) setTimeout(()=>{ if(!bRec&&!bSpeaking&&!bBusy&&bPrefs.wake) bStartRec('wake'); },250);
   };
   try{ r.start(); }catch(e){ bRec=null; return false; }
-  blueState(mode==='command'?'listening':'wake');
+  blueState(mode==='command'?'listening':(mode==='barge'?'speaking':'wake'));
   if(mode==='command') bSilence=setTimeout(bFinish,8000);
   return true;
 }
@@ -4026,7 +4081,19 @@ function bFinish(){
     bStopRec(); blueResume(false); return;
   }
   bStopRec();
+  if(BLUE_HUSH.test(text)){ blueResume(false); return; }   // "stop" / "wait" just silences her
   blueHandle(text,true);
+}
+/* is this the user talking over Blue, not the mic hearing her own voice? */
+const BLUE_STOPW=/\b(stop|wait|hold on|hang on|blue|enough|cancel|shut up|pause|quiet)\b/i;
+const BLUE_HUSH=/^\W*(ok(ay)?\W+)?(stop|wait|hold on|hang on|enough|cancel|shut up|pause|quiet|thanks?( you)?)\W*$/i;
+function bIsBargeIn(t,isFinal){
+  if(isFinal&&BLUE_HUSH.test(t)) return true;   // a lone "stop" / "wait"
+  const words=t.toLowerCase().match(/[a-z0-9']+/g)||[];
+  const mine=new Set(bSpoken);
+  const m=t.match(BLUE_STOPW);
+  if(m&&!m[1].toLowerCase().split(' ').every(w=>mine.has(w))) return true;
+  return words.filter(w=>!mine.has(w)).length>=3;
 }
 function blueResume(followUp){
   if(followUp&&BlueSR){ bStartRec('command'); return; }
@@ -4034,7 +4101,7 @@ function blueResume(followUp){
   bMode='off'; blueState('idle');
 }
 function blueMicTap(){
-  if(bSpeaking&&window.speechSynthesis){ speechSynthesis.cancel(); bSpeaking=false; }
+  if(bSpeaking) bHush();
   if(bMode==='command'){ bFinish(); return; }
   if(bBusy) return;
   bPrimeSpeech();
@@ -4048,7 +4115,7 @@ document.addEventListener('visibilitychange',()=>{
   if(!document.hidden&&user&&bPrefs.wake&&!bRec&&!bBusy&&!bSpeaking) bStartRec('wake');
 });
 function blueBoot(){ if(bPrefs.wake&&BlueSR&&!bRec) bStartRec('wake'); else blueState('idle'); }
-function blueReset(){ bStopRec(); if(window.speechSynthesis) speechSynthesis.cancel(); blueConvo=[]; const l=document.getElementById('blue-log'); if(l) l.innerHTML=''; blueClosePanel(); }
+function blueReset(){ bStopRec(); bHush(); blueConvo=[]; const l=document.getElementById('blue-log'); if(l) l.innerHTML=''; blueClosePanel(); }
 
 /* init */
 init();

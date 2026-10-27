@@ -444,6 +444,68 @@
     .rtable td::before{content:attr(data-label);color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-right:12px}
     .thumb img{max-height:240px}
   }
+  /* ===== BLUE — voice assistant ===== */
+  #blue-orb{display:none;position:fixed;right:24px;bottom:24px;z-index:61;width:62px;height:62px;border-radius:50%;border:none;padding:0;cursor:pointer;background:transparent;align-items:center;justify-content:center}
+  body.authed #blue-orb{display:flex}
+  .bo-core{position:absolute;inset:6px;border-radius:50%;background:radial-gradient(circle at 34% 30%,#bfe9ff 0%,#38bdf8 28%,#2563eb 62%,#3b2a9e 100%);box-shadow:0 0 22px rgba(56,189,248,.55),inset 0 -6px 14px rgba(20,20,80,.45);transition:transform .25s}
+  .bo-ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(56,189,248,.45);opacity:.0}
+  #blue-orb:hover .bo-core{transform:scale(1.06)}
+  #blue-orb[data-state="wake"] .bo-ring{opacity:1;animation:boBreath 3.2s ease-in-out infinite}
+  #blue-orb[data-state="listening"] .bo-core{animation:boPulse 1s ease-in-out infinite}
+  #blue-orb[data-state="listening"] .bo-ring{opacity:1;animation:boPing 1.2s ease-out infinite}
+  #blue-orb[data-state="thinking"] .bo-core{background:conic-gradient(from 0deg,#38bdf8,#6c5ce7,#2563eb,#38bdf8);animation:boSpin 1.1s linear infinite}
+  #blue-orb[data-state="speaking"] .bo-core{animation:boTalk .45s ease-in-out infinite alternate}
+  @keyframes boBreath{0%,100%{transform:scale(1);opacity:.35}50%{transform:scale(1.12);opacity:.9}}
+  @keyframes boPing{0%{transform:scale(.9);opacity:.9}100%{transform:scale(1.45);opacity:0}}
+  @keyframes boPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+  @keyframes boSpin{to{transform:rotate(360deg)}}
+  @keyframes boTalk{from{transform:scale(.95)}to{transform:scale(1.1)}}
+  #blue-panel{display:none;position:fixed;right:24px;bottom:98px;z-index:60;width:390px;height:min(600px,calc(100vh - 130px));background:var(--panel);border:1px solid var(--border);border-radius:20px;box-shadow:0 18px 50px rgba(0,0,0,.45);flex-direction:column;overflow:hidden}
+  #blue-panel.on{display:flex}
+  .bp-head{display:flex;align-items:center;gap:10px;padding:14px 14px 12px;border-bottom:1px solid var(--border);background:linear-gradient(120deg,rgba(56,189,248,.12),rgba(108,92,231,.08))}
+  .bp-mini{width:30px;height:30px;border-radius:50%;flex:none;background:radial-gradient(circle at 34% 30%,#bfe9ff 0%,#38bdf8 28%,#2563eb 62%,#3b2a9e 100%);box-shadow:0 0 12px rgba(56,189,248,.5)}
+  #blue-panel[data-state="listening"] .bp-mini{animation:boPulse 1s ease-in-out infinite}
+  #blue-panel[data-state="thinking"] .bp-mini{background:conic-gradient(from 0deg,#38bdf8,#6c5ce7,#2563eb,#38bdf8);animation:boSpin 1.1s linear infinite}
+  #blue-panel[data-state="speaking"] .bp-mini{animation:boTalk .45s ease-in-out infinite alternate}
+  .bp-name{font-weight:800;font-size:15px;letter-spacing:.3px}
+  .bp-status{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bp-x{background:transparent;border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:9px;font-size:14px;cursor:pointer;flex:none}
+  .bp-settings{display:none;padding:12px 14px;border-bottom:1px solid var(--border);font-size:12.5px;gap:9px;flex-direction:column}
+  .bp-settings.on{display:flex}
+  .bp-settings label{display:flex;gap:8px;align-items:center;cursor:pointer}
+  .bp-settings input[type=checkbox]{width:auto;margin:0}
+  .bp-hint{font-size:11.5px;color:var(--muted);line-height:1.5}
+  .bp-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .bm{max-width:88%;padding:9px 13px;border-radius:14px;font-size:13.5px;line-height:1.55;white-space:pre-wrap;word-wrap:break-word}
+  .bm.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+  .bm.blue{align-self:flex-start;background:var(--panel2);border:1px solid var(--border);border-bottom-left-radius:4px}
+  .bcard{align-self:stretch;border:1px solid rgba(56,189,248,.35);background:linear-gradient(120deg,rgba(56,189,248,.08),rgba(108,92,231,.05));border-radius:12px;padding:10px 12px;font-size:12.5px}
+  .bcard .bt{font-weight:700;margin-bottom:3px}
+  .bcard .bd{color:var(--muted);line-height:1.5;white-space:pre-wrap}
+  .bcard .ba{display:flex;gap:6px;margin-top:8px}
+  .bcard .ba button{background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:11.5px;cursor:pointer}
+  .bcard.undone{opacity:.45}
+  .bp-intro{color:var(--muted);font-size:13px;line-height:1.6}
+  .bp-intro b{color:var(--text)}
+  .bp-ex{display:block;width:100%;text-align:left;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 11px;margin-top:7px;font-size:12.5px;cursor:pointer;line-height:1.45}
+  .bp-live{min-height:0;padding:0 14px;font-size:13px;color:#38bdf8;font-style:italic}
+  .bp-live:not(:empty){padding:6px 14px 8px}
+  .bp-foot{display:flex;gap:8px;padding:10px 12px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border)}
+  .bp-foot input{flex:1;min-width:0;margin:0}
+  .bp-mic{width:46px;height:42px;flex:none;border:none;border-radius:12px;font-size:18px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#38bdf8,#2563eb)}
+  #blue-panel[data-state="listening"] .bp-mic{background:linear-gradient(135deg,#f0506e,#c0264a);animation:boPulse 1s ease-in-out infinite}
+  .open-pos .op-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border);font-size:13px}
+  .open-pos .op-row:first-of-type{border-top:none}
+  .open-pos .op-meta{color:var(--muted)}
+  .open-pos .op-time{color:var(--muted);font-size:11.5px;margin-left:auto}
+  .open-pos .op-why{font-size:12px;color:var(--muted);border-left:3px solid #38bdf8;padding-left:9px;margin:0 0 8px;line-height:1.5}
+  .open-pos .btn{padding:5px 11px;font-size:12px}
+  @media(max-width:760px){
+    #blue-orb{right:14px;bottom:calc(90px + env(safe-area-inset-bottom));width:56px;height:56px}
+    body[data-view="ai"] #blue-orb{display:none}
+    body.blue-open #blue-orb{display:none}
+    #blue-panel{left:8px;right:8px;width:auto;bottom:calc(84px + env(safe-area-inset-bottom));height:min(70vh,560px)}
+  }
 </style>
 </head>
 <body>
@@ -654,6 +716,29 @@
   </div>
 </div>
 
+<!-- BLUE — voice assistant -->
+<button id="blue-orb" data-state="idle" onclick="blueOrbTap()" aria-label="Talk to Blue" title="Talk to Blue"><span class="bo-ring"></span><span class="bo-core"></span></button>
+<div id="blue-panel" data-state="idle">
+  <div class="bp-head">
+    <div class="bp-mini"></div>
+    <div style="flex:1;min-width:0"><div class="bp-name">Blue</div><div class="bp-status" id="blue-status">Tap the mic and talk</div></div>
+    <button class="bp-x" onclick="blueToggleSettings()" title="Settings">⚙</button>
+    <button class="bp-x" onclick="blueClosePanel()" title="Close">✕</button>
+  </div>
+  <div class="bp-settings" id="blue-settings">
+    <label><input type="checkbox" id="bs-wake" onchange="blueSetPref('wake',this.checked)"> Always listen for “Blue” while this tab is open</label>
+    <label><input type="checkbox" id="bs-voice" onchange="blueSetPref('voice',this.checked)"> Speak replies out loud</label>
+    <select id="bs-voicename" onchange="blueSetPref('voiceName',this.value)"></select>
+    <div class="bp-hint">Voice works in Chrome, Edge and Safari. Blue uses your Gemini key from the ✨ Zella AI tab. Every change she makes shows up here with an Undo button.</div>
+  </div>
+  <div class="bp-log" id="blue-log"></div>
+  <div class="bp-live" id="blue-live"></div>
+  <div class="bp-foot">
+    <input type="text" id="blue-input" placeholder="Talk or type to Blue…" onkeydown="if(event.key==='Enter')blueTyped()">
+    <button class="bp-mic" id="blue-mic" onclick="blueMicTap()" title="Talk">🎙</button>
+  </div>
+</div>
+
 <div class="lightbox" id="lightbox" onclick="this.classList.remove('on')"><img id="lightbox-img" alt=""></div>
 
 <!-- MOBILE MORE SHEET -->
@@ -840,7 +925,7 @@ const SUPABASE_URL = 'https://gwiwyvaznhmjggsrtstl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_QER1M-e9IeezCYrkK7mMLg_-qkrYmDS';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let user = null, trades = [], txs = [], playbooks = [], accounts = [], currentAccount = null, authMode = 'signin', isAdmin = false;
+let user = null, trades = [], openTrades = [], txs = [], playbooks = [], accounts = [], currentAccount = null, authMode = 'signin', isAdmin = false;
 let calMonth = null, calPageMonth = null, selDay = null, detailId = null;
 const urlCache = {};
 const EMOTIONS = [['😌','Calm'],['🙂','Confident'],['😐','Neutral'],['😤','Frustrated'],['😰','Anxious'],['😡','Tilted']];
@@ -896,7 +981,7 @@ async function googleLogin(){
   const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});
   if(error) authMsg(error.message);
 }
-async function signOut(){ await sb.auth.signOut(); trades=[]; txs=[]; accounts=[]; currentAccount=null; geminiKey=''; aiMsgs=[]; aiChats=[]; currentChatId=null; aiChatsLoaded=false; weeks=[]; weekPairs=[]; weeksLoaded=false; goals=[]; goalsLoaded=false; visionEq=null; }
+async function signOut(){ blueReset(); await sb.auth.signOut(); openTrades=[]; trades=[]; txs=[]; accounts=[]; currentAccount=null; geminiKey=''; aiMsgs=[]; aiChats=[]; currentChatId=null; aiChatsLoaded=false; weeks=[]; weekPairs=[]; weeksLoaded=false; goals=[]; goalsLoaded=false; visionEq=null; }
 
 function setUser(u){
   const changed = (u&&u.id)!==(user&&user.id);
@@ -904,12 +989,13 @@ function setUser(u){
   document.getElementById('loading').style.display='none';
   document.getElementById('auth-screen').style.display=u?'none':'flex';
   document.getElementById('app').classList.toggle('on',!!u);
+  document.body.classList.toggle('authed',!!u);
   if(u&&changed){
     const name=(u.user_metadata&&u.user_metadata.full_name)||u.email.split('@')[0];
     document.getElementById('user-email').textContent=u.email||name;
     document.getElementById('avatar').textContent=(u.email||name)[0];
     window._name=name.split(' ')[0];
-    initProfile().then(ok=>{ if(ok) loadTrades(); });
+    initProfile().then(ok=>{ if(ok){ loadTrades(); blueBoot(); } });
   }
 }
 async function initProfile(){
@@ -1102,7 +1188,9 @@ async function loadTrades(){
   if(!accounts.length) await ensureAccounts();
   const {data,error}=await acctScope(sb.from('trades').select('*').eq('user_id',user.id)).order('close_time',{ascending:true});
   if(error){ alert('Could not load trades: '+error.message); return; }
-  trades=(data||[]).map(fromDb);
+  const all=(data||[]).map(fromDb);
+  openTrades=all.filter(t=>t.source==='open');   // running positions (logged by Blue) stay out of stats
+  trades=all.filter(t=>t.source!=='open');
   const r2=await acctScope(sb.from('transactions').select('*').eq('user_id',user.id)).order('time',{ascending:true});
   txs = r2.error ? [] : (r2.data||[]).map(r=>({id:r.id,time:r.time,label:r.label||'',amount:+r.amount}));
   const r3=await sb.from('playbooks').select('*').eq('user_id',user.id).order('created_at',{ascending:true});
@@ -1147,6 +1235,7 @@ function show(v){
   document.querySelectorAll('.views').forEach(x=>x.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.v===v));
+  document.body.dataset.view=v;
   window.scrollTo(0,0);
   if(v==='dashboard') renderDash();
   if(v==='journal') renderJournal();
@@ -1498,6 +1587,7 @@ function renderDash(){
   ${hasTrades?'':`<div class="panel" style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
     <div style="font-size:13.5px;color:var(--muted)">${txs.length?`Deposits recorded: <b class="pos">${money(txSum)}</b> — no closed trades yet. Your dashboard is ready and waiting.`:'No trades yet — import your statement and your dashboard comes alive.'}</div>
     <div><button class="btn" onclick="show('import')">⬆ Import statement</button></div></div>`}
+  ${openPositionsHtml()}
   <div class="stats">
     <div class="card"><div class="label">Net P&L</div><div class="value ${cls(s.net)}">${signed(s.net)}</div><div class="delta">${s.n} closed trades</div></div>
     <div class="card"><div class="label">Win Rate</div><div class="value">${s.winRate.toFixed(1)}%</div><div class="delta">${s.wins}W / ${s.losses}L</div></div>
@@ -2234,6 +2324,7 @@ function aiDataContext(){
   } else if(acct){ out+=`ACCOUNT TYPE: personal/live account.\n`; }
   if(accounts.length>1) out+='OTHER ACCOUNTS: '+accounts.filter(a=>a.id!==currentAccount).map(a=>`${a.name} (${a.kind==='funded'?(a.firm||'prop')+' '+(PHASE_LABEL[a.phase]||'')+' · '+a.status:'live'})`).join(' | ')+'\n';
   out+=`OVERALL: ${s.n} trades · win rate ${s.winRate.toFixed(1)}% · profit factor ${s.profitFactor>=99?'inf':s.profitFactor.toFixed(2)} · avg win $${s.avgWin.toFixed(0)} · avg loss $${s.avgLoss.toFixed(0)} · max drawdown $${s.maxDD.toFixed(0)} · day win rate ${s.dayWinRate.toFixed(0)}%\n`;
+  if(openTrades.length) out+='OPEN POSITIONS (running, not in stats): '+openTrades.map(t=>`${t.symbol} ${t.side} lots:${t.lots??'?'} entry:${t.entry??'?'} SL:${t.sl??'none'} TP:${t.tp??'none'} opened ${t.openTime.slice(0,16)}`).join(' | ')+'\n';
   // per setup
   out+='SETUPS: '+Object.entries(s.bySetup).map(([k,v])=>{
     const g=computeStats(v); return `${k}: ${g.n}t net $${g.net.toFixed(0)} wr ${g.winRate.toFixed(0)}%`;
@@ -2313,13 +2404,9 @@ async function gemCandidates(){
   if(!list.length) list.push('gemini-2.5-flash','gemini-2.0-flash');
   return list.slice(0,5);
 }
-async function gemini(userMsgs){
-  if(!geminiKey) return '⚠ Add your free Gemini API key first (see the box above).';
-  const contents=userMsgs.map(m=>({role:m.role==='user'?'user':'model',parts:[{text:m.text}]}));
-  const body=JSON.stringify({
-    system_instruction:{parts:[{text:AI_SYSTEM+'\n\n===USER DATA===\n'+aiDataContext()}]},
-    contents
-  });
+/* one generateContent call with model fallback → {j} on success, {err:'⚠ …'} on failure */
+async function gemRequest(payload){
+  const body=JSON.stringify(payload);
   let lastErr='';
   for(const model of await gemCandidates()){
     try{
@@ -2327,16 +2414,26 @@ async function gemini(userMsgs){
         method:'POST',headers:{'Content-Type':'application/json'},body
       });
       const j=await r.json();
-      if(r.ok){ gemModel=model; return j.candidates[0].content.parts[0].text.trim(); }
+      if(r.ok){ gemModel=model; return {j}; }
       lastErr=(j.error&&j.error.message)||String(r.status);
       // model not on free tier / not found → try next candidate
       if(r.status===429&&lastErr.includes('limit: 0')){ continue; }
       if(r.status===404){ continue; }
-      if(r.status===429) return '⚠ Rate limit hit — wait a minute and try again. ('+model+')';
-      return '⚠ Gemini error: '+lastErr+'\nCheck your key in the ✨ tab (starts with AIza or AQ.).';
+      if(r.status===429) return {err:'⚠ Rate limit hit — wait a minute and try again. ('+model+')'};
+      return {err:'⚠ Gemini error: '+lastErr+'\nCheck your key in the ✨ tab (starts with AIza or AQ.).'};
     }catch(e){ lastErr=e.message||'network error'; }
   }
-  return '⚠ No usable Gemini model on your key\'s free tier right now. Last error: '+lastErr;
+  return {err:'⚠ No usable Gemini model on your key\'s free tier right now. Last error: '+lastErr};
+}
+async function gemini(userMsgs){
+  if(!geminiKey) return '⚠ Add your free Gemini API key first (see the box above).';
+  const contents=userMsgs.map(m=>({role:m.role==='user'?'user':'model',parts:[{text:m.text}]}));
+  const res=await gemRequest({
+    system_instruction:{parts:[{text:AI_SYSTEM+'\n\n===USER DATA===\n'+aiDataContext()}]},
+    contents
+  });
+  if(res.err) return res.err;
+  return res.j.candidates[0].content.parts.filter(p=>p.text&&!p.thought).map(p=>p.text).join('').trim();
 }
 
 function mdLite(t){
@@ -3386,6 +3483,572 @@ setInterval(()=>{
   if(!document.getElementById('view-import').classList.contains('active')) return;
   ['a','b'].forEach(k=>{ gStep[k]=(gStep[k]+1)%GUIDES[k].length; renderGuide(k); });
 },3400);
+
+/* ================= OPEN POSITIONS (running trades, closed later) ================= */
+function sinceTxt(iso){
+  const m=Math.max(0,Math.round((Date.now()-new Date(iso))/60000));
+  return m<60?m+'m ago':(m<1440?Math.round(m/60)+'h ago':Math.round(m/1440)+'d ago');
+}
+function openPositionsHtml(){
+  if(!openTrades.length) return '';
+  return `<div class="panel open-pos" style="margin-bottom:14px"><h3>📍 Open positions <span class="tag">counted in stats once closed</span></h3>
+    ${openTrades.map(t=>`<div class="op-row">
+      <span class="pill ${t.side==='BUY'?'buy':'sell'}">${t.side==='BUY'?'LONG':'SHORT'}</span> <span class="sym">${esc(t.symbol)}</span>
+      <span class="op-meta">${[t.lots!=null?t.lots+' lots':'',t.entry!=null?'@ '+t.entry:'',t.sl!=null?'SL '+t.sl:'',t.tp!=null?'TP '+t.tp:''].filter(Boolean).join(' · ')}</span>
+      <span class="op-time">${sinceTxt(t.openTime)}</span>
+      <button class="btn" onclick="closeOpenPos('${t.dbId}')">Close</button>
+      <button class="btn ghost" onclick="delOpenPos('${t.dbId}')" title="Delete">✕</button>
+    </div>${t.notesPre?`<div class="op-why">${esc(t.notesPre)}</div>`:''}`).join('')}
+  </div>`;
+}
+function closeOpenPos(id){
+  const t=openTrades.find(x=>x.dbId===id); if(!t) return;
+  openTradeModal(t);
+  document.getElementById('mt-title').textContent='Close position';
+  document.getElementById('mt-profit').value='';
+  document.getElementById('mt-close').value=toLocalDT(new Date().toISOString());
+}
+async function delOpenPos(id){
+  if(!confirm('Delete this open position?')) return;
+  const {error}=await sb.from('trades').delete().eq('id',id);
+  if(error){ alert(error.message); return; }
+  openTrades=openTrades.filter(t=>t.dbId!==id);
+  renderDash();
+}
+
+/* ================= BLUE — voice assistant ================= */
+const BLUE_EMO={calm:'😌',confident:'🙂',neutral:'😐',frustrated:'😤',anxious:'😰',tilted:'😡'};
+const BLUE_PAGES=['dashboard','journal','calendar','weekly','vision','playbook','ai','account','import'];
+const bStr=(d,e)=>Object.assign({type:'STRING',description:d},e||{});
+const bNumT=d=>({type:'NUMBER',description:d});
+const BLUE_TRADE_FIELDS={
+  symbol:bStr('Instrument, uppercase broker symbol e.g. XAUUSD, EURUSD, NAS100'),
+  side:bStr('BUY for long, SELL for short',{enum:['BUY','SELL']}),
+  lots:bNumT('Position size in lots'),
+  entry:bNumT('Entry price'), sl:bNumT('Stop loss price'), tp:bNumT('Take profit price'), exit:bNumT('Exit price'),
+  profit:bNumT('Realised result in account currency, negative for a loss'),
+  open_time:bStr('ISO 8601 with offset; omit for now'), close_time:bStr('ISO 8601 with offset; omit for now'),
+  setup:bStr('Setup / strategy name — prefer an existing playbook name'),
+  emotion:bStr('How the trader felt',{enum:Object.keys(BLUE_EMO)}),
+  reason:bStr('Why they entered (pre-trade notes), in their words, tidied up'),
+  review:bStr('Post-trade review / lessons')
+};
+const BLUE_TOOLS=[
+  {name:'log_trade',description:'Record a trade. status "open" for a position that is running now (no result yet), "closed" for a finished trade with a known profit.',
+    parameters:{type:'OBJECT',properties:Object.assign({status:bStr('open or closed',{enum:['open','closed']})},BLUE_TRADE_FIELDS),required:['symbol','side','status']}},
+  {name:'close_trade',description:'Close one of the OPEN POSITIONS with its final result.',
+    parameters:{type:'OBJECT',properties:{trade_id:bStr('id from OPEN POSITIONS'),profit:bNumT('Final result, negative for a loss'),exit:bNumT('Exit price'),
+      close_time:bStr('ISO 8601; omit for now'),review:bStr('Lessons / what happened'),emotion:bStr('Feeling',{enum:Object.keys(BLUE_EMO)})},required:['trade_id','profit']}},
+  {name:'update_trade',description:'Change fields of an existing trade (open or closed). reason/review are appended unless notes_mode is "replace".',
+    parameters:{type:'OBJECT',properties:Object.assign({trade_id:bStr('Trade id'),notes_mode:bStr('append or replace',{enum:['append','replace']})},BLUE_TRADE_FIELDS),required:['trade_id']}},
+  {name:'delete_trade',description:'Delete a trade. The user is asked to confirm on screen.',
+    parameters:{type:'OBJECT',properties:{trade_id:bStr('Trade id')},required:['trade_id']}},
+  {name:'save_strategy',description:'Create or update a playbook setup (the user may call the playbook "blue book" or "strategy book"). If the name exists, text is appended unless mode is "replace".',
+    parameters:{type:'OBJECT',properties:{name:bStr('Setup name'),market:bStr('Markets/pairs it is for'),timeframe:bStr('Timeframes'),
+      entry_rules:bStr('Entry rules / checklist'),exit_rules:bStr('Exit / take-profit rules'),risk_rules:bStr('Risk & stop rules'),
+      mode:bStr('append or replace',{enum:['append','replace']})},required:['name']}},
+  {name:'delete_strategy',description:'Delete a playbook setup by name. The user is asked to confirm on screen.',
+    parameters:{type:'OBJECT',properties:{name:bStr('Setup name')},required:['name']}},
+  {name:'add_transaction',description:'Record a deposit or withdrawal on the current account.',
+    parameters:{type:'OBJECT',properties:{kind:bStr('deposit or withdrawal',{enum:['deposit','withdrawal']}),amount:bNumT('Positive amount'),
+      label:bStr('Optional note'),date:bStr('ISO date; omit for now')},required:['kind','amount']}},
+  {name:'set_goal',description:'Create or update a Vision goal for a horizon. Only the given fields change.',
+    parameters:{type:'OBJECT',properties:{horizon:bStr('Goal horizon',{enum:HORIZONS.map(h=>h[0])}),title:bStr('Goal'),target_amount:bNumT('Target $ amount'),
+      target_date:bStr('Target date text'),why:bStr('Why it matters'),steps:{type:'ARRAY',items:{type:'STRING'},description:'Action steps (replaces existing)'}},required:['horizon']}},
+  {name:'add_weekly_call',description:'Add a market call (bias + expectation) to this week\'s Weekly Analysis.',
+    parameters:{type:'OBJECT',properties:{symbol:bStr('Symbol'),bias:bStr('Bias',{enum:['bullish','bearish','range']}),expectation:bStr('What they expect price to do and why')},required:['symbol','bias','expectation']}},
+  {name:'review_weekly_call',description:'Grade a weekly market call.',
+    parameters:{type:'OBJECT',properties:{call_id:bStr('id from WEEKLY CALLS'),outcome:bStr('Result',{enum:['correct','partial','wrong']}),
+      miss_reason:bStr('Why it missed',{enum:MISS_REASONS.map(m=>m[0])}),what_happened:bStr('What price actually did')},required:['call_id']}},
+  {name:'switch_account',description:'Switch the active trading account.',
+    parameters:{type:'OBJECT',properties:{account_id:bStr('id from ACCOUNTS')},required:['account_id']}},
+  {name:'open_page',description:'Show a page of the app.',
+    parameters:{type:'OBJECT',properties:{page:bStr('Page',{enum:BLUE_PAGES})},required:['page']}}
+];
+
+/* ---- helpers ---- */
+const bNum=v=>{ if(v==null||v==='') return null; const n=parseNum(v); return isNaN(n)?null:n; };
+const bDate=v=>{ if(!v) return null; const d=new Date(v); return isNaN(d)?null:d; };
+const bJoin=(a,b)=>b?(a?a.trim()+'\n'+b:b):(a||'');
+function bAllTrades(){ return [...openTrades,...trades]; }
+function bTradeDesc(t){
+  return `${t.side==='BUY'?'LONG':'SHORT'} ${t.symbol}`+[t.lots!=null?t.lots+' lots':'',t.entry!=null?'@ '+t.entry:'',t.sl!=null?'SL '+t.sl:'',t.tp!=null?'TP '+t.tp:'',
+    t.source==='open'?'':signed(t.profit)].filter(Boolean).map(x=>' · '+x).join('').replace(' · @',' @');
+}
+function bCurView(){ const a=document.querySelector('.views.active'); return a?a.id.replace('view-',''):'dashboard'; }
+async function blueRefresh(){
+  const v=bCurView(), y=window.scrollY;
+  loadTrades._view=v;
+  await loadTrades();
+  if(v==='detail'){ if(trades.some(t=>t.id===detailId)) renderDetail(); else show('journal'); }
+  window.scrollTo(0,y);
+}
+function blueRerender(){ const v=bCurView(), y=window.scrollY; if(v==='detail') renderDetail(); else show(v); window.scrollTo(0,y); }
+async function bReloadPlaybooks(){
+  const r=await sb.from('playbooks').select('*').eq('user_id',user.id).order('created_at',{ascending:true});
+  playbooks=r.error?playbooks:(r.data||[]);
+}
+function bOffsetIso(d){
+  const off=-d.getTimezoneOffset(), sg=off>=0?'+':'-', a=Math.abs(off);
+  const l=new Date(d.getTime()+off*60000).toISOString().slice(0,19);
+  return l+sg+String(Math.floor(a/60)).padStart(2,'0')+':'+String(a%60).padStart(2,'0');
+}
+function bTradeCols(t){ const r=toDb(t); delete r.user_id; delete r.account_id; return r; }
+
+/* ---- actions Blue can take ---- */
+const BLUE_ACTIONS={
+  async log_trade(a){
+    const open=a.status==='open';
+    const ot=bDate(a.open_time)||new Date();
+    let ct=open?ot:(bDate(a.close_time)||new Date()); if(ct<ot) ct=ot;
+    const profit=open?0:bNum(a.profit);
+    if(profit==null) return {error:'A closed trade needs its result in money. Ask how much they made or lost, or log it as open.'};
+    const t={openTime:ot.toISOString(),closeTime:ct.toISOString(),symbol:String(a.symbol).trim().toUpperCase(),side:a.side==='SELL'?'SELL':'BUY',
+      lots:bNum(a.lots),entry:bNum(a.entry),exit:open?null:bNum(a.exit),sl:bNum(a.sl),tp:bNum(a.tp),commission:0,swap:0,profit,
+      setup:a.setup||'',emotion:BLUE_EMO[a.emotion]||'',notesPre:a.reason||'',notesPost:a.review||'',shots:[],source:open?'open':'voice'};
+    t.id=tradeKey(t);
+    const {data,error}=await sb.from('trades').insert(toDb(t)).select('id').maybeSingle();
+    if(error) return {error:error.message.includes('duplicate')?'That exact trade is already in the journal.':error.message};
+    await blueRefresh();
+    blueCard(open?'📍 Position opened':'✅ Trade logged', bTradeDesc(t)+(t.notesPre?'\n“'+t.notesPre+'”':''),
+      async()=>{ await sb.from('trades').delete().eq('id',data.id); await blueRefresh(); },
+      ()=>{ const x=trades.find(z=>z.dbId===data.id); if(x) openDetail(x.id); else show('dashboard'); });
+    return {ok:true,trade_id:data.id,status:open?'open':'closed'};
+  },
+  async close_trade(a){
+    const t=openTrades.find(x=>x.dbId===a.trade_id); if(!t) return {error:'No open position with that id.'};
+    const profit=bNum(a.profit); if(profit==null) return {error:'Need the result in money.'};
+    const prev=bTradeCols(t);
+    let ct=bDate(a.close_time)||new Date(); if(ct<new Date(t.openTime)) ct=new Date(t.openTime);
+    const upd={profit,close_time:ct.toISOString(),source:'voice',notes_post:bJoin(t.notesPost,a.review)};
+    if(bNum(a.exit)!=null) upd.exit=bNum(a.exit);
+    if(BLUE_EMO[a.emotion]) upd.emotion=BLUE_EMO[a.emotion];
+    const {error}=await sb.from('trades').update(upd).eq('id',t.dbId);
+    if(error) return {error:error.message};
+    await blueRefresh();
+    blueCard('🏁 Position closed', bTradeDesc(Object.assign({},t,{profit,source:'voice'})),
+      async()=>{ await sb.from('trades').update(prev).eq('id',t.dbId); await blueRefresh(); },
+      ()=>openDetail(t.id));
+    return {ok:true};
+  },
+  async update_trade(a){
+    const t=bAllTrades().find(x=>x.dbId===a.trade_id); if(!t) return {error:'No trade with that id.'};
+    const prev=bTradeCols(t), n=Object.assign({},t);
+    ['lots','entry','exit','sl','tp','profit'].forEach(k=>{ if(bNum(a[k])!=null) n[k]=bNum(a[k]); });
+    if(a.symbol) n.symbol=String(a.symbol).toUpperCase();
+    if(a.side) n.side=a.side==='SELL'?'SELL':'BUY';
+    if(a.setup!=null) n.setup=a.setup;
+    if(BLUE_EMO[a.emotion]) n.emotion=BLUE_EMO[a.emotion];
+    if(bDate(a.open_time)) n.openTime=bDate(a.open_time).toISOString();
+    if(bDate(a.close_time)) n.closeTime=bDate(a.close_time).toISOString();
+    const rep=a.notes_mode==='replace';
+    if(a.reason) n.notesPre=rep?a.reason:bJoin(t.notesPre,a.reason);
+    if(a.review) n.notesPost=rep?a.review:bJoin(t.notesPost,a.review);
+    const row=bTradeCols(n); row.trade_key=t.id;   // keep identity stable
+    const {error}=await sb.from('trades').update(row).eq('id',t.dbId);
+    if(error) return {error:error.message};
+    await blueRefresh();
+    blueCard('✏️ Trade updated', bTradeDesc(n),
+      async()=>{ await sb.from('trades').update(prev).eq('id',t.dbId); await blueRefresh(); },
+      t.source==='open'?null:()=>openDetail(t.id));
+    return {ok:true};
+  },
+  async delete_trade(a){
+    const t=bAllTrades().find(x=>x.dbId===a.trade_id); if(!t) return {error:'No trade with that id.'};
+    if(!confirm('Blue wants to delete this trade:\n\n'+bTradeDesc(t)+'\n\nDelete it?')) return {error:'User cancelled the delete.'};
+    const row=toDb(t);
+    const {error}=await sb.from('trades').delete().eq('id',t.dbId);
+    if(error) return {error:error.message};
+    await blueRefresh();
+    blueCard('🗑 Trade deleted', bTradeDesc(t), async()=>{ await sb.from('trades').insert(row); await blueRefresh(); });
+    return {ok:true};
+  },
+  async save_strategy(a){
+    const name=String(a.name||'').trim(); if(!name) return {error:'Setup needs a name.'};
+    const ex=playbooks.find(p=>p.name.toLowerCase()===name.toLowerCase());
+    const keys=['market','timeframe','entry_rules','exit_rules','risk_rules'];
+    const row={user_id:user.id,name:ex?ex.name:name};
+    keys.forEach(k=>{ const v=a[k]?String(a[k]).trim():''; const old=ex?(ex[k]||''):'';
+      row[k]=!v?old:(ex&&a.mode!=='replace'&&k.endsWith('rules')?bJoin(old,v):v); });
+    let id=ex&&ex.id, error;
+    if(ex) ({error}=await sb.from('playbooks').update(row).eq('id',ex.id));
+    else{ const r=await sb.from('playbooks').insert(row).select('id').maybeSingle(); error=r.error; id=r.data&&r.data.id; }
+    if(error) return {error:error.message};
+    const prev=ex?Object.fromEntries(keys.map(k=>[k,ex[k]||''])):null;
+    await bReloadPlaybooks(); blueRerender();
+    blueCard(ex?'📘 Playbook setup updated':'📘 Added to playbook', row.name+(row.entry_rules?'\nEntry: '+row.entry_rules:''),
+      async()=>{ if(prev) await sb.from('playbooks').update(prev).eq('id',id); else await sb.from('playbooks').delete().eq('id',id); await bReloadPlaybooks(); blueRerender(); },
+      ()=>show('playbook'));
+    return {ok:true,created:!ex};
+  },
+  async delete_strategy(a){
+    const p=playbooks.find(x=>x.name.toLowerCase()===String(a.name||'').trim().toLowerCase()); if(!p) return {error:'No playbook setup with that name.'};
+    if(!confirm('Blue wants to delete the playbook setup "'+p.name+'". Delete it?')) return {error:'User cancelled the delete.'};
+    const {error}=await sb.from('playbooks').delete().eq('id',p.id);
+    if(error) return {error:error.message};
+    const row=Object.assign({},p); delete row.id; delete row.created_at;
+    await bReloadPlaybooks(); blueRerender();
+    blueCard('🗑 Setup deleted', p.name, async()=>{ await sb.from('playbooks').insert(row); await bReloadPlaybooks(); blueRerender(); });
+    return {ok:true};
+  },
+  async add_transaction(a){
+    const amt=Math.abs(bNum(a.amount)||0); if(!amt) return {error:'Need a positive amount.'};
+    const amount=a.kind==='withdrawal'?-amt:amt, time=(bDate(a.date)||new Date()).toISOString(), label=a.label||'';
+    const row={user_id:user.id,tx_key:txKey({time,label,amount}),time,label,amount,source:'voice'};
+    if(currentAccount) row.account_id=currentAccount;
+    const {data,error}=await sb.from('transactions').insert(row).select('id').maybeSingle();
+    if(error) return {error:error.message};
+    await reloadTxs(); blueRerender();
+    blueCard(amount>0?'💰 Deposit recorded':'💸 Withdrawal recorded', signed(amount)+(label?' · '+label:''),
+      async()=>{ await sb.from('transactions').delete().eq('id',data.id); await reloadTxs(); blueRerender(); },
+      ()=>show('account'));
+    return {ok:true};
+  },
+  async set_goal(a){
+    await loadGoals();
+    const g=goalOf(a.horizon), prev=g?{title:g.title,target_amount:g.target_amount,target_date:g.target_date,why:g.why,steps:g.steps}:null;
+    const row={};
+    if(a.title) row.title=a.title;
+    if(bNum(a.target_amount)!=null) row.target_amount=bNum(a.target_amount);
+    if(a.target_date) row.target_date=a.target_date;
+    if(a.why) row.why=a.why;
+    if(Array.isArray(a.steps)) row.steps=a.steps.map(t=>({t:String(t),done:false}));
+    let id=g&&g.id;
+    if(g){ const {error}=await sb.from('vision_goals').update(row).eq('id',g.id); if(error) return {error:error.message}; Object.assign(g,row); }
+    else{
+      if(!row.title) return {error:'A new goal needs a title.'};
+      const {data,error}=await sb.from('vision_goals').insert(Object.assign({user_id:user.id,horizon:a.horizon},row)).select('*').maybeSingle();
+      if(error) return {error:error.message}; goals.push(data); id=data.id;
+    }
+    blueRerender();
+    const hl=(HORIZONS.find(h=>h[0]===a.horizon)||['',a.horizon])[1];
+    blueCard('🎯 Goal saved', hl+': '+((g||{}).title||row.title)+(row.target_amount?' · $'+row.target_amount:''),
+      async()=>{ if(prev){ await sb.from('vision_goals').update(prev).eq('id',id); Object.assign(goalOf(a.horizon)||{},prev); }
+        else{ await sb.from('vision_goals').delete().eq('id',id); goals=goals.filter(x=>x.id!==id); } blueRerender(); },
+      ()=>show('vision'));
+    return {ok:true};
+  },
+  async add_weekly_call(a){
+    await loadWeekly();
+    const ws=mondayOf(new Date());
+    let w=weeks.find(x=>x.week_start===ws);
+    if(!w){
+      const {data,error}=await sb.from('weekly_analyses').insert({user_id:user.id,week_start:ws}).select('*').maybeSingle();
+      if(error) return {error:error.message}; w=data; weeks.unshift(w);
+    }
+    const {data,error}=await sb.from('weekly_pairs').insert({user_id:user.id,analysis_id:w.id,symbol:String(a.symbol).toUpperCase(),bias:a.bias,expectation:a.expectation}).select('*').maybeSingle();
+    if(error) return {error:error.message};
+    weekPairs.push(data); blueRerender();
+    blueCard('🧭 Weekly call added', data.symbol+' · '+(BIAS_LABEL[data.bias]||data.bias)+'\n“'+data.expectation+'”',
+      async()=>{ await sb.from('weekly_pairs').delete().eq('id',data.id); weekPairs=weekPairs.filter(x=>x.id!==data.id); blueRerender(); },
+      ()=>show('weekly'));
+    return {ok:true,call_id:data.id};
+  },
+  async review_weekly_call(a){
+    await loadWeekly();
+    const p=weekPairs.find(x=>x.id===a.call_id); if(!p) return {error:'No weekly call with that id.'};
+    const prev={outcome:p.outcome,miss_reason:p.miss_reason,what_happened:p.what_happened}, upd={};
+    if(a.outcome){ upd.outcome=a.outcome; if(a.outcome==='correct') upd.miss_reason=''; }
+    if(a.miss_reason&&a.outcome!=='correct') upd.miss_reason=a.miss_reason;
+    if(a.what_happened) upd.what_happened=bJoin(p.what_happened,a.what_happened);
+    const {error}=await sb.from('weekly_pairs').update(upd).eq('id',p.id);
+    if(error) return {error:error.message};
+    Object.assign(p,upd); blueRerender();
+    blueCard('📝 Weekly call reviewed', p.symbol+' · '+(p.outcome||'pending')+(p.miss_reason?' · '+p.miss_reason:''),
+      async()=>{ await sb.from('weekly_pairs').update(prev).eq('id',p.id); Object.assign(p,prev); blueRerender(); },
+      ()=>show('weekly'));
+    return {ok:true};
+  },
+  async switch_account(a){
+    const ac=accounts.find(x=>x.id===a.account_id); if(!ac) return {error:'No account with that id.'};
+    await switchAccount(ac.id);
+    blueCard('🔀 Switched account', ac.name);
+    return {ok:true,now_on:ac.name};
+  },
+  async open_page(a){
+    if(!BLUE_PAGES.includes(a.page)) return {error:'Unknown page.'};
+    show(a.page); return {ok:true};
+  }
+};
+
+/* ---- the brain: Gemini with tools ---- */
+function blueRefs(){
+  let out='OPEN POSITIONS (id | trade):\n'+(openTrades.length?openTrades.map(t=>`${t.dbId} | ${bTradeDesc(t)} | opened ${t.openTime}${t.setup?' | setup '+t.setup:''}`).join('\n'):'none')+'\n';
+  out+='RECENT CLOSED TRADES (id | trade), newest first:\n'+(trades.slice(-12).reverse().map(t=>`${t.dbId} | ${t.closeTime.slice(0,16)} ${bTradeDesc(t)}${t.setup?' | '+t.setup:''}`).join('\n')||'none')+'\n';
+  out+='PLAYBOOK SETUPS: '+(playbooks.map(p=>p.name).join(', ')||'none yet')+'\n';
+  out+='ACCOUNTS (id | name): '+accounts.map(a=>`${a.id} | ${a.name}${a.id===currentAccount?' (ACTIVE)':''}`).join(' ; ')+'\n';
+  const recent=weeks.slice(0,2).map(w=>w.id);
+  const calls=weekPairs.filter(p=>recent.includes(p.analysis_id));
+  out+='WEEKLY CALLS (id | week | call):\n'+(calls.map(p=>`${p.id} | ${(weeks.find(w=>w.id===p.analysis_id)||{}).week_start} | ${p.symbol} ${p.bias} outcome:${p.outcome||'pending'}`).join('\n')||'none')+'\n';
+  out+='VISION GOALS: '+(goals.map(g=>`${g.horizon}: ${g.title}`).join(' | ')||'none')+'\n';
+  return out;
+}
+function blueSystem(){
+  const now=new Date();
+  return `You are Blue, the voice assistant living inside ${window._name||'the trader'}'s trading journal (ZellaBek) — think JARVIS/FRIDAY: calm, quick, confident, warm, a little witty. You are female.
+Your replies are SPOKEN ALOUD: 1–2 short sentences, plain words, no markdown, no lists, no emojis. Say symbols naturally ("gold", "euro-dollar", "Nasdaq").
+You can change the journal with your tools — use them. Rules:
+- When the user describes a trade, call log_trade right away with everything they said. Don't ask about optional fields. Ask only if the symbol or direction is truly missing.
+- long/buy = BUY, short/sell = SELL. gold=XAUUSD, silver=XAGUSD, cable=GBPUSD, fiber=EURUSD, yen pairs e.g. USDJPY, nasdaq/nas=NAS100, dow=US30, s&p=SPX500, oil=USOIL, bitcoin=BTCUSD. Prefer symbols the user already trades.
+- Taking/entering/in a trade now = status open. "from X to Y" while entering means entry X, take-profit Y (a level beyond Y on the losing side is the stop). Past tense with a result = closed with profit.
+- "I closed my gold trade, made 240" → close_trade on the matching open position. If several match, ask which.
+- Their reasons go in reason, lessons in review, cleaned up but in their voice. Match setup to an existing playbook name when it fits.
+- "blue book", "playbook", "strategy book" all mean the playbook → save_strategy.
+- After acting, confirm in one line what you recorded. If something is dangerous (no stop loss, revenge trade right after a loss, oversized risk) add one short coach-like warning.
+- Questions about performance: answer from the data with real numbers.
+- If a tool returns an error, tell the user plainly.
+Now: ${bOffsetIso(now)} (${now.toLocaleDateString('en',{weekday:'long'})}). Times the user mentions are in this timezone; give tool times as ISO 8601 with this offset.
+
+===REFERENCE IDS===
+${blueRefs()}
+===USER DATA===
+${aiDataContext()}`;
+}
+let blueConvo=[];
+async function blueThink(text){
+  const mark=blueConvo.length;
+  blueConvo.push({role:'user',parts:[{text}]});
+  for(let round=0;round<6;round++){
+    const res=await gemRequest({system_instruction:{parts:[{text:blueSystem()}]},contents:blueConvo,tools:[{functionDeclarations:BLUE_TOOLS}]});
+    if(res.err){ blueConvo.length=mark; return res.err; }
+    const content=res.j.candidates&&res.j.candidates[0]&&res.j.candidates[0].content;
+    if(!content||!content.parts){ blueConvo.length=mark; return 'Sorry, I lost that one — say it again?'; }
+    content.role='model';
+    blueConvo.push(content);
+    const calls=content.parts.filter(p=>p.functionCall);
+    if(!calls.length){
+      // keep the history short, cutting only at a plain user message
+      if(blueConvo.length>30){ let i=blueConvo.length-24; while(i<blueConvo.length&&!(blueConvo[i].role==='user'&&blueConvo[i].parts[0].text!=null)) i++; blueConvo=blueConvo.slice(i); }
+      return content.parts.filter(p=>p.text&&!p.thought).map(p=>p.text).join('').trim()||'Done.';
+    }
+    const parts=[];
+    for(const c of calls){
+      const fn=BLUE_ACTIONS[c.functionCall.name];
+      let out;
+      try{ out=fn?await fn(c.functionCall.args||{}):{error:'Unknown tool'}; }catch(e){ out={error:e.message||String(e)}; }
+      parts.push({functionResponse:{name:c.functionCall.name,response:out}});
+    }
+    blueConvo.push({role:'user',parts});
+  }
+  return 'Done.';
+}
+
+/* ---- panel UI ---- */
+let bPrefs={wake:false,voice:true,voiceName:''};
+try{ Object.assign(bPrefs,JSON.parse(localStorage.getItem('zb_blue')||'{}')); }catch(e){}
+function blueSetPref(k,v){
+  bPrefs[k]=v;
+  try{ localStorage.setItem('zb_blue',JSON.stringify(bPrefs)); }catch(e){}
+  if(k==='wake'){ if(v){ bPrimeSpeech(); if(bMode!=='command'&&!bBusy) bStartRec('wake'); } else if(bMode==='wake'){ bStopRec(); blueState('idle'); } }
+  if(k==='voice'&&!v&&window.speechSynthesis) speechSynthesis.cancel();
+}
+function blueState(s,status){
+  document.getElementById('blue-orb').dataset.state=s;
+  document.getElementById('blue-panel').dataset.state=s;
+  const st={idle:bPrefs.wake?'Say “Blue…” or tap the mic':'Tap the mic and talk',wake:'Listening for “Blue”…',listening:'Listening…',thinking:'Working on it…',speaking:'Speaking…'};
+  document.getElementById('blue-status').textContent=status||st[s]||'';
+  const mic=document.getElementById('blue-mic'); if(mic) mic.textContent=s==='listening'?'■':'🎙';
+}
+function blueOpenPanel(){
+  document.getElementById('blue-panel').classList.add('on');
+  document.body.classList.add('blue-open');
+  if(!document.getElementById('blue-log').children.length) blueIntro();
+  document.getElementById('bs-wake').checked=!!bPrefs.wake;
+  document.getElementById('bs-voice').checked=!!bPrefs.voice;
+}
+function blueClosePanel(){
+  document.getElementById('blue-panel').classList.remove('on');
+  document.body.classList.remove('blue-open');
+  if(bMode==='command'){ bStopRec(); blueResume(false); }
+}
+function blueToggleSettings(){ bFillVoices(); document.getElementById('blue-settings').classList.toggle('on'); }
+function blueIntro(){
+  const ex=['I\'m going long gold at 2650, stop 2640, target 2680 — it broke and retested the Asian high',
+    'Add a strategy to my blue book: London breakout on GBPUSD, 15 minute, enter on the retest, stop below the range, risk 1%',
+    'I closed my gold trade, made 240 dollars, I was calm',
+    'How did I do this week?'];
+  const log=document.getElementById('blue-log');
+  log.innerHTML=`<div class="bp-intro">Hi ${esc(window._name||'')} — I'm <b>Blue</b>. Tell me about a trade, a strategy, a deposit or a goal and I'll put it in the right place. Try:
+    ${ex.map(x=>`<button class="bp-ex" onclick="blueHandle(this.textContent,false)">${esc(x)}</button>`).join('')}</div>`;
+}
+function blueScroll(){ const l=document.getElementById('blue-log'); l.scrollTop=l.scrollHeight; }
+function blueMsg(who,text){
+  const d=document.createElement('div'); d.className='bm '+who; d.textContent=text;
+  document.getElementById('blue-log').appendChild(d); blueScroll();
+}
+function blueCard(title,desc,undo,view){
+  const d=document.createElement('div'); d.className='bcard';
+  d.innerHTML=`<div class="bt">${esc(title)}</div><div class="bd">${esc(desc)}</div><div class="ba"></div>`;
+  const ba=d.querySelector('.ba');
+  if(view){ const b=document.createElement('button'); b.textContent='Open'; b.onclick=view; ba.appendChild(b); }
+  if(undo){ const b=document.createElement('button'); b.textContent='↶ Undo';
+    b.onclick=async()=>{ b.disabled=true; try{ await undo(); d.classList.add('undone'); b.textContent='Undone'; }catch(e){ b.disabled=false; alert(e.message); } };
+    ba.appendChild(b); }
+  if(!ba.children.length) ba.remove();
+  document.getElementById('blue-log').appendChild(d); blueScroll();
+}
+function blueLive(t){ document.getElementById('blue-live').textContent=t||''; }
+function blueTyped(){
+  const i=document.getElementById('blue-input'); const v=i.value.trim(); if(!v) return;
+  i.value=''; blueHandle(v,false);
+}
+async function blueHandle(text,byVoice){
+  text=String(text||'').trim();
+  if(!text||bBusy) return;
+  if(window.speechSynthesis) speechSynthesis.cancel();
+  blueOpenPanel();
+  blueMsg('user',text);
+  if(!geminiKey){
+    const m='I need your free Gemini key first — add it in the Zella AI tab and I\'m all yours.';
+    blueMsg('blue',m); blueSpeak(m,()=>blueResume(false)); return;
+  }
+  bBusy=true; blueState('thinking');
+  let reply;
+  try{ reply=await blueThink(text); }catch(e){ reply='Something went wrong: '+(e.message||e); }
+  bBusy=false;
+  blueMsg('blue',reply);
+  blueSpeak(reply,()=>blueResume(byVoice&&/\?\s*$/.test(reply)));
+}
+
+/* ---- voice out ---- */
+function bVoices(){ return window.speechSynthesis?speechSynthesis.getVoices():[]; }
+function bVoice(){
+  const vs=bVoices(); if(!vs.length) return null;
+  if(bPrefs.voiceName){ const v=vs.find(x=>x.name===bPrefs.voiceName); if(v) return v; }
+  const pref=['Google UK English Female','Microsoft Aria','Microsoft Jenny','Microsoft Sonia','Microsoft Libby','Samantha','Karen','Moira','Tessa','Serena','Microsoft Zira','Google US English'];
+  for(const p of pref){ const v=vs.find(x=>x.name.includes(p)); if(v) return v; }
+  return vs.find(x=>/^en/i.test(x.lang)&&/female|woman/i.test(x.name))||vs.find(x=>/^en/i.test(x.lang))||vs[0];
+}
+function bFillVoices(){
+  const sel=document.getElementById('bs-voicename'); if(!sel) return;
+  const vs=bVoices().filter(v=>/^en/i.test(v.lang));
+  if(!vs.length){ sel.style.display='none'; return; }
+  sel.style.display='';
+  const cur=(bVoice()||{}).name;
+  sel.innerHTML=vs.map(v=>`<option value="${esc(v.name)}"${v.name===cur?' selected':''}>🔊 ${esc(v.name)}</option>`).join('');
+}
+if(window.speechSynthesis) speechSynthesis.onvoiceschanged=bFillVoices;
+function bPrimeSpeech(){ try{ if(window.speechSynthesis){ const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); } }catch(e){} }
+function bSpeakable(t){
+  return String(t).replace(/[*#`_>]/g,'').replace(/[\p{Extended_Pictographic}️]/gu,'').replace(/\s+/g,' ').trim();
+}
+function blueSpeak(text,after){
+  const done=()=>{ bSpeaking=false; after&&after(); };
+  const clean=bSpeakable(text);
+  if(!bPrefs.voice||!window.speechSynthesis||!clean){ done(); return; }
+  speechSynthesis.cancel();
+  bSpeaking=true; blueState('speaking');
+  const parts=clean.replace(/([.!?])\s+/g,'$1\u0001').split('\u0001').filter(Boolean);
+  const v=bVoice();
+  let finished=false;
+  const fin=()=>{ if(finished) return; finished=true; done(); };
+  parts.forEach((p,i)=>{
+    const u=new SpeechSynthesisUtterance(p);
+    if(v){ u.voice=v; u.lang=v.lang; }
+    u.rate=1.05; u.pitch=1.05;
+    if(i===parts.length-1) u.onend=fin;
+    u.onerror=fin;
+    speechSynthesis.speak(u);
+  });
+}
+function bChime(){
+  try{
+    const C=window.AudioContext||window.webkitAudioContext; if(!C) return;
+    const ctx=bChime.ctx||(bChime.ctx=new C());
+    [[880,0],[1320,.09]].forEach(([f,t])=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine'; o.frequency.value=f; o.connect(g); g.connect(ctx.destination);
+      const s=ctx.currentTime+t;
+      g.gain.setValueAtTime(0,s); g.gain.linearRampToValueAtTime(.12,s+.02); g.gain.exponentialRampToValueAtTime(.0001,s+.22);
+      o.start(s); o.stop(s+.25);
+    });
+  }catch(e){}
+}
+
+/* ---- voice in: push-to-talk + "Blue" wake word ---- */
+const BlueSR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const BLUE_WAKE=/\b(blue|blew|blu|bloo)\b/i;
+let bRec=null, bMode='off', bSpeaking=false, bBusy=false, bSilence=null, bWakeIdx=0, bByWord=false, bWokeAt=0, bText='';
+function bStopRec(){
+  clearTimeout(bSilence);
+  if(bRec){ bRec.onend=null; bRec.onresult=null; bRec.onerror=null; try{ bRec.abort(); }catch(e){} bRec=null; }
+  bMode='off'; blueLive('');
+}
+function bStartRec(mode){
+  bStopRec();
+  if(!BlueSR){ blueState('idle','Voice input needs Chrome, Edge or Safari — type instead'); return false; }
+  const r=new BlueSR(); bRec=r;
+  bMode=mode; bWakeIdx=0; bByWord=false; bText=''; bWokeAt=Date.now();
+  r.lang=navigator.language||'en-US'; r.continuous=true; r.interimResults=true;
+  r.onresult=e=>{
+    if(bSpeaking||bBusy) return;
+    const R=e.results;
+    if(bMode==='wake'){
+      for(let i=e.resultIndex;i<R.length;i++){
+        if(BLUE_WAKE.test(R[i][0].transcript)){ bWakeIdx=i; bByWord=true; bMode='command'; bWokeAt=Date.now(); bChime(); blueOpenPanel(); blueState('listening'); break; }
+      }
+      if(bMode!=='command') return;
+    }
+    let txt='', allFinal=true;
+    for(let i=bWakeIdx;i<R.length;i++){
+      let t=R[i][0].transcript;
+      if(i===bWakeIdx&&bByWord) t=t.replace(/^.*?\b(?:blue|blew|blu|bloo)\b[\s,.!?:]*/i,'');
+      txt+=t; if(!R[i].isFinal) allFinal=false;
+    }
+    bText=txt.trim(); blueLive(bText);
+    clearTimeout(bSilence);
+    bSilence=setTimeout(bFinish, allFinal?1700:2800);
+  };
+  r.onerror=e=>{
+    if(e.error==='not-allowed'||e.error==='service-not-allowed'){
+      bPrefs.wake=false; try{ localStorage.setItem('zb_blue',JSON.stringify(bPrefs)); }catch(x){}
+      bStopRec(); blueState('idle','Microphone blocked — allow it in the browser to talk to me');
+    }
+  };
+  r.onend=()=>{
+    if(bRec!==r) return;
+    bRec=null;
+    if(bMode==='command'&&bText) bFinish();
+    else if(bMode==='command'&&!bByWord) blueResume(false);
+    else if(bPrefs.wake&&!bSpeaking&&!bBusy) setTimeout(()=>{ if(!bRec&&!bSpeaking&&!bBusy&&bPrefs.wake) bStartRec('wake'); },250);
+  };
+  try{ r.start(); }catch(e){ bRec=null; return false; }
+  blueState(mode==='command'?'listening':'wake');
+  if(mode==='command') bSilence=setTimeout(bFinish,8000);
+  return true;
+}
+function bFinish(){
+  clearTimeout(bSilence);
+  const text=bText.trim();
+  if(!text){
+    // said just "Blue" — keep waiting a little for the actual command
+    if(bByWord&&Date.now()-bWokeAt<8000&&bRec){ bSilence=setTimeout(bFinish,1500); return; }
+    bStopRec(); blueResume(false); return;
+  }
+  bStopRec();
+  blueHandle(text,true);
+}
+function blueResume(followUp){
+  if(followUp&&BlueSR){ bStartRec('command'); return; }
+  if(bPrefs.wake&&BlueSR){ bStartRec('wake'); return; }
+  bMode='off'; blueState('idle');
+}
+function blueMicTap(){
+  if(bSpeaking&&window.speechSynthesis){ speechSynthesis.cancel(); bSpeaking=false; }
+  if(bMode==='command'){ bFinish(); return; }
+  if(bBusy) return;
+  bPrimeSpeech();
+  if(bStartRec('command')) bChime();
+}
+function blueOrbTap(){
+  blueOpenPanel();
+  blueMicTap();
+}
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&user&&bPrefs.wake&&!bRec&&!bBusy&&!bSpeaking) bStartRec('wake');
+});
+function blueBoot(){ if(bPrefs.wake&&BlueSR&&!bRec) bStartRec('wake'); else blueState('idle'); }
+function blueReset(){ bStopRec(); if(window.speechSynthesis) speechSynthesis.cancel(); blueConvo=[]; const l=document.getElementById('blue-log'); if(l) l.innerHTML=''; blueClosePanel(); }
 
 /* init */
 init();
